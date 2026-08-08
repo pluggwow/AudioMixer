@@ -255,6 +255,12 @@ final class MixerViewModel: ObservableObject {
               apps.indices.contains(source),
               apps.indices.contains(destination) else { return }
 
+        // Из группы в группу строки не переезжают: закреплённые остаются
+        // наверху, остальные под ними. Интерфейс такого перетаскивания и не
+        // предлагает, но проверка здесь — чтобы порядок нельзя было сломать
+        // мимо него, а список не дёргался при следующей пересборке.
+        guard apps[source].isPinned == apps[destination].isPinned else { return }
+
         // Пользователь передвинул строку сам — прежнее место, запомненное при
         // закреплении, устарело: открепление не должно отменять его выбор.
         volumeStore.clearPinAnchor(for: apps[source].bundleID)
@@ -288,10 +294,23 @@ final class MixerViewModel: ObservableObject {
         rebuildApps(from: lastProcesses)
     }
 
+    /// Итоговый порядок строк: сначала закреплённые, потом остальные.
+    ///
+    /// Закреплённые держатся вверху одной группой, и строки между группами не
+    /// смешиваются. Иначе «закрепить» означало бы всего лишь «один раз поднять
+    /// наверх»: любой сосед, начав играть или переехав перетаскиванием, тут же
+    /// оттеснил бы закреплённое вниз.
+    private func ordered(_ list: [AudioAppState]) -> [AudioAppState] {
+        let arranged = manuallyOrdered(list)
+        // filter сохраняет взаимный порядок, поэтому внутри каждой группы
+        // остаётся ровно то, что выстроил пользователь.
+        return arranged.filter(\.isPinned) + arranged.filter { !$0.isPinned }
+    }
+
     /// Ручной порядок важнее автоматического. Приложения, которых в нём нет,
     /// встают в конец в автоматическом порядке: новое приложение не должно
     /// само влезать в середину выстроенного пользователем списка.
-    private func ordered(_ list: [AudioAppState]) -> [AudioAppState] {
+    private func manuallyOrdered(_ list: [AudioAppState]) -> [AudioAppState] {
         let order = orderStore.order
         guard !order.isEmpty else { return list }
 

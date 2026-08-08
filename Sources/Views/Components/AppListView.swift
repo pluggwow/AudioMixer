@@ -79,8 +79,8 @@ struct AppListView: View {
             sliderStyle: sliderStyle,
             compact: compact,
             isDragged: isDragged,
-            canMoveUp: index > 0,
-            canMoveDown: index < apps.count - 1,
+            canMoveUp: index > allowedRange(for: index).lower,
+            canMoveDown: index < allowedRange(for: index).upper,
             onVolumeChange: { onVolumeChange(app.bundleID, $0) },
             onToggleMute: { onToggleMute(app.bundleID) },
             onTogglePin: { onTogglePin(app.bundleID) },
@@ -93,9 +93,9 @@ struct AppListView: View {
         )
         .offset(y: offset(at: index))
         .zIndex(isDragged ? 1 : 0)
-        // .subviews при одной строке: переставлять нечего, но слайдер внутри
-        // должен продолжать работать — .none выключил бы и его.
-        .gesture(dragGesture(for: app.bundleID), including: apps.count > 1 ? .all : .subviews)
+        // .subviews когда строку двигать некуда: сам жест выключен, а слайдер
+        // внутри продолжает работать — .none выключил бы и его.
+        .gesture(dragGesture(for: app.bundleID), including: canDrag(at: index) ? .all : .subviews)
         .transition(.asymmetric(
             insertion: .opacity.combined(with: .offset(y: -6)),
             removal: .opacity.combined(with: .scale(scale: 0.97))
@@ -117,6 +117,30 @@ struct AppListView: View {
         return apps.firstIndex { $0.bundleID == draggingID }
     }
 
+    /// Закреплённые строки идут подряд с начала списка — так их выстраивает
+    /// вью-модель.
+    private var pinnedCount: Int {
+        apps.prefix(while: \.isPinned).count
+    }
+
+    /// Границы, в которых строке разрешено ездить: своя группа и только она.
+    /// Закреплённые переставляются между закреплёнными, остальные — между
+    /// остальными, и группы не перемешиваются.
+    private func allowedRange(for index: Int) -> (lower: Int, upper: Int) {
+        guard apps.indices.contains(index) else { return (index, index) }
+        return apps[index].isPinned
+            ? (0, max(pinnedCount - 1, 0))
+            : (pinnedCount, apps.count - 1)
+    }
+
+    /// В группе одна строка — двигать её некуда. Жест в этом случае не просто
+    /// бесполезен: без него строка не будет подниматься под курсором, чтобы
+    /// тут же падать обратно.
+    private func canDrag(at index: Int) -> Bool {
+        let bounds = allowedRange(for: index)
+        return bounds.upper > bounds.lower
+    }
+
     /// Смещение строки от её места в списке. Автопрокрутка входит сюда наравне
     /// с движением мыши: содержимое уехало на строку — значит, чтобы остаться
     /// под курсором, строка должна сместиться на столько же.
@@ -128,7 +152,8 @@ struct AppListView: View {
     private var targetIndex: Int? {
         guard let from = draggedIndex, step > 0 else { return nil }
         let shift = Int((draggedVisualOffset / step).rounded())
-        return min(max(from + shift, 0), apps.count - 1)
+        let bounds = allowedRange(for: from)
+        return min(max(from + shift, bounds.lower), bounds.upper)
     }
 
     private func offset(at index: Int) -> CGFloat {
@@ -228,9 +253,13 @@ struct AppListView: View {
 
     /// Прокрутить на строку в заданную сторону. `false` — дальше некуда.
     private func scrollOneRow(_ direction: Int) -> Bool {
-        guard let current = targetIndex else { return false }
+        guard let from = draggedIndex, let current = targetIndex else { return false }
+        // Дальше своей группы не едем — иначе накопленный сдвиг ушёл бы за
+        // границу, где точка вставки уже упирается, и обратный ход начался бы
+        // не сразу, а после холостого пути.
+        let bounds = allowedRange(for: from)
         let next = current + direction
-        guard apps.indices.contains(next) else { return false }
+        guard next >= bounds.lower, next <= bounds.upper else { return false }
 
         autoScrollShift += direction
         withAnimation(.linear(duration: 0.12)) {

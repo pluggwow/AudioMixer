@@ -187,27 +187,51 @@ final class MixerViewModel: ObservableObject {
     /// громкость.
     func togglePin(for bundleID: String) {
         guard let index = apps.firstIndex(where: { $0.bundleID == bundleID }) else { return }
+        if apps[index].isPinned {
+            unpin(at: index)
+        } else {
+            pin(at: index)
+        }
+    }
 
-        let pinned = !apps[index].isPinned
-        apps[index].isPinned = pinned
-        volumeStore.setPinned(pinned, for: bundleID, displayName: apps[index].name)
+    private func pin(at index: Int) {
+        // Куда вернуть при откреплении — сосед сверху, каким его видит
+        // пользователь прямо сейчас.
+        let anchor: PinAnchor = index > 0 ? .after(apps[index - 1].bundleID) : .top
 
-        if pinned {
-            // Закреплённое поднимается наверх и там фиксируется. Порядок
-            // сохраняется даже если строка уже первая: иначе автоматический
-            // порядок («играющие первыми») увёл бы её вниз, стоит зазвучать
-            // соседу — а закрепляют как раз чтобы этого не было.
-            var reordered = apps
-            reordered.insert(reordered.remove(at: index), at: 0)
-            commitOrder(reordered)
-            return
+        apps[index].isPinned = true
+        volumeStore.setPinned(true, for: apps[index].bundleID, displayName: apps[index].name, anchor: anchor)
+
+        // Закреплённое поднимается наверх и там фиксируется. Порядок
+        // сохраняется даже если строка уже первая: иначе автоматический
+        // порядок («играющие первыми») увёл бы её вниз, стоит зазвучать
+        // соседу — а закрепляют как раз чтобы этого не было.
+        var reordered = apps
+        reordered.insert(reordered.remove(at: index), at: 0)
+        commitOrder(reordered)
+    }
+
+    private func unpin(at index: Int) {
+        let bundleID = apps[index].bundleID
+        let anchor = volumeStore.settings(for: bundleID)?.anchorBeforePin
+        let wasRunning = apps[index].isRunning
+
+        apps[index].isPinned = false
+        volumeStore.setPinned(false, for: bundleID, displayName: apps[index].name, anchor: nil)
+
+        // Строка возвращается на место, с которого её подняло закрепление.
+        // Место ищется в сохранённом порядке, а не в видимом списке: сосед,
+        // за которым она стояла, мог с тех пор закрыться.
+        let restored = anchor.map { orderStore.place(bundleID, at: $0) } ?? false
+
+        if !wasRunning {
+            // Закрытое приложение без закрепления держать в списке нечем.
+            apps.remove(at: index)
         }
 
-        // Открепили закрытое приложение — держать строку больше не на чем.
-        // Позицию открепления не трогаем: наверх поднимает закрепление,
-        // а не всякое изменение строки.
-        if !apps[index].isRunning {
-            apps.remove(at: index)
+        if restored {
+            hasCustomOrder = orderStore.isCustom
+            rebuildApps(from: lastProcesses)
         }
     }
 
@@ -230,6 +254,10 @@ final class MixerViewModel: ObservableObject {
         guard source != destination,
               apps.indices.contains(source),
               apps.indices.contains(destination) else { return }
+
+        // Пользователь передвинул строку сам — прежнее место, запомненное при
+        // закреплении, устарело: открепление не должно отменять его выбор.
+        volumeStore.clearPinAnchor(for: apps[source].bundleID)
 
         var reordered = apps
         reordered.insert(reordered.remove(at: source), at: destination)

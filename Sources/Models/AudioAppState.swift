@@ -50,6 +50,17 @@ struct AudioAppState: Identifiable, Equatable {
     }
 }
 
+/// Где строка стояла до закрепления — чтобы открепление вернуло её на место.
+///
+/// Запоминается сосед, а не индекс: список живёт своей жизнью, приложения
+/// приходят и уходят, и номер позиции через час означает уже не то место.
+enum PinAnchor: Codable, Equatable {
+    /// Была самой первой.
+    case top
+    /// Стояла сразу за этим bundleID.
+    case after(String)
+}
+
 /// Сохраняемые настройки одного приложения.
 struct StoredAppSettings: Codable, Equatable {
     var volume: Float
@@ -58,19 +69,25 @@ struct StoredAppSettings: Codable, Equatable {
     var displayName: String
     var lastSeen: Date
     var isPinned: Bool
+    /// Место, на которое строку вернёт открепление. `nil` — возвращать некуда:
+    /// либо не закреплено, либо пользователь сам передвинул строку после
+    /// закрепления, и его выбор важнее прежнего места.
+    var anchorBeforePin: PinAnchor?
 
     init(volume: Float = 1.0,
          isMuted: Bool = false,
          rememberVolume: Bool = true,
          displayName: String = "",
          lastSeen: Date = .now,
-         isPinned: Bool = false) {
+         isPinned: Bool = false,
+         anchorBeforePin: PinAnchor? = nil) {
         self.volume = volume
         self.isMuted = isMuted
         self.rememberVolume = rememberVolume
         self.displayName = displayName
         self.lastSeen = lastSeen
         self.isPinned = isPinned
+        self.anchorBeforePin = anchorBeforePin
     }
 
     /// Декодер написан руками из-за одной особенности Swift: синтезированный
@@ -88,5 +105,6 @@ struct StoredAppSettings: Codable, Equatable {
         displayName = try container.decode(String.self, forKey: .displayName)
         lastSeen = try container.decode(Date.self, forKey: .lastSeen)
         isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
+        anchorBeforePin = try container.decodeIfPresent(PinAnchor.self, forKey: .anchorBeforePin)
     }
 }

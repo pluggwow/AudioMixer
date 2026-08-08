@@ -62,11 +62,21 @@ final class VolumeStore: ObservableObject {
     /// Закрепление не зависит от «запоминать громкости»: это не громкость,
     /// а состав списка, и запись нужна даже для приложения, которому
     /// громкость никогда не меняли — записи в storage для него ещё нет.
-    func setPinned(_ pinned: Bool, for bundleID: String, displayName: String) {
+    func setPinned(_ pinned: Bool, for bundleID: String, displayName: String, anchor: PinAnchor?) {
         var entry = storage[bundleID] ?? StoredAppSettings()
         entry.isPinned = pinned
+        entry.anchorBeforePin = anchor
         entry.displayName = displayName.isEmpty ? entry.displayName : displayName
         entry.lastSeen = .now
+        storage[bundleID] = entry
+        scheduleSave()
+    }
+
+    /// Пользователь передвинул строку сам — прежнее место больше не актуально,
+    /// открепление не должно отменять его выбор.
+    func clearPinAnchor(for bundleID: String) {
+        guard var entry = storage[bundleID], entry.anchorBeforePin != nil else { return }
+        entry.anchorBeforePin = nil
         storage[bundleID] = entry
         scheduleSave()
     }

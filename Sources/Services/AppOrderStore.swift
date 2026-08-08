@@ -68,6 +68,31 @@ final class AppOrderStore: ObservableObject {
         scheduleSave()
     }
 
+    /// Переставить приложение на место, описанное якорем. Работает по
+    /// сохранённому списку, включая закрытые приложения, — поэтому вернуть
+    /// строку можно и за соседа, которого сейчас не видно.
+    ///
+    /// `false` — якоря в списке уже нет (приложение забыли или вытеснили из
+    /// потолка), возвращать не за что; порядок при этом не меняется.
+    @discardableResult
+    func place(_ bundleID: String, at anchor: PinAnchor) -> Bool {
+        var updated = order
+        guard let current = updated.firstIndex(of: bundleID) else { return false }
+        updated.remove(at: current)
+
+        switch anchor {
+        case .top:
+            updated.insert(bundleID, at: 0)
+        case .after(let anchorID):
+            guard let position = updated.firstIndex(of: anchorID) else { return false }
+            updated.insert(bundleID, at: position + 1)
+        }
+
+        order = updated
+        scheduleSave()
+        return true
+    }
+
     /// Вернуться к автоматическому порядку.
     func reset() {
         order = []

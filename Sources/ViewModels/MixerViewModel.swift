@@ -21,6 +21,9 @@ final class MixerViewModel: ObservableObject {
     @Published private(set) var engineState: EngineStatus = .idle
     @Published private(set) var permissionStatus: PermissionManager.Status = .unknown
 
+    /// Порядок строк задан вручную, автоматический больше не применяется.
+    @Published private(set) var hasCustomOrder: Bool = false
+
     enum EngineStatus: Equatable {
         case idle
         case active(Int)
@@ -31,6 +34,7 @@ final class MixerViewModel: ObservableObject {
 
     let systemVolume: SystemVolumeController
     let volumeStore: VolumeStore
+    let orderStore: AppOrderStore
     private let processMonitor: AudioProcessMonitor
     private let deviceManager: AudioDeviceManager
     private let permissions: PermissionManager
@@ -39,11 +43,20 @@ final class MixerViewModel: ObservableObject {
     private var engine: Any?   // AudioProcessTapEngine, спрятан за availability
     private var cancellables = Set<AnyCancellable>()
 
+    /// Последний список от монитора. Нужен, чтобы пересобрать строки без нового
+    /// события: после отпускания перетаскиваемой строки и при сбросе порядка.
+    private var lastProcesses: [AudioProcessInfo] = []
+
+    /// Пока строку тащат, список не перестраиваем: появившееся или пропавшее
+    /// приложение сдвинуло бы индексы прямо под курсором.
+    private var isReordering = false
+
     /// Зависимости — nil-по-умолчанию, а не `= .init()`: значения по умолчанию
     /// вычисляются вне изоляции актора, а все четыре типа @MainActor-изолированы.
     /// Реальные объекты создаются в теле init, которое уже на MainActor.
     init(settings: SettingsStore,
          volumeStore: VolumeStore,
+         orderStore: AppOrderStore,
          processMonitor: AudioProcessMonitor? = nil,
          deviceManager: AudioDeviceManager? = nil,
          systemVolume: SystemVolumeController? = nil,
@@ -51,6 +64,8 @@ final class MixerViewModel: ObservableObject {
 
         self.settings = settings
         self.volumeStore = volumeStore
+        self.orderStore = orderStore
+        self.hasCustomOrder = orderStore.isCustom
         self.processMonitor = processMonitor ?? AudioProcessMonitor()
         self.deviceManager = deviceManager ?? AudioDeviceManager()
         self.systemVolume = systemVolume ?? SystemVolumeController()
@@ -81,7 +96,10 @@ final class MixerViewModel: ObservableObject {
         processMonitor.$processes
             .receive(on: DispatchQueue.main)
             .sink { [weak self] processes in
-                self?.rebuildApps(from: processes)
+                guard let self else { return }
+                self.lastProcesses = processes
+                guard !self.isReordering else { return }
+                self.rebuildApps(from: processes)
             }
             .store(in: &cancellables)
 
@@ -106,6 +124,7 @@ final class MixerViewModel: ObservableObject {
         processMonitor.stop()
         deviceManager.stop()
         volumeStore.flush()
+        orderStore.flush()
         tapEngine?.shutdown()
     }
 
@@ -161,6 +180,75 @@ final class MixerViewModel: ObservableObject {
         )
     }
 
+    // MARK: - Порядок строк
+
+    /// Строку взяли мышью. На время перетаскивания список замораживается.
+    func beginReordering() {
+        isReordering = true
+    }
+
+    /// Строку отпустили — применяем то, что монитор успел прислать за это время.
+    func endReordering() {
+        guard isReordering else { return }
+        isReordering = false
+        rebuildApps(from: lastProcesses)
+    }
+
+    /// Переставить строку. Индексы — в текущем `apps`.
+    func moveApp(from source: Int, to destination: Int) {
+        guard source != destination,
+              apps.indices.contains(source),
+              apps.indices.contains(destination) else { return }
+
+        var reordered = apps
+        reordered.insert(reordered.remove(at: source), at: destination)
+        apps = reordered
+
+        orderStore.apply(visibleOrder: reordered.map(\.bundleID))
+        hasCustomOrder = orderStore.isCustom
+
+        // Движку порядок безразличен: applyUnsafe сравнивает МНОЖЕСТВА pid,
+        // так что перестановка строк не пересобирает агрегат и не даёт щелчка.
+        // Поэтому pushLevelsToEngine() здесь намеренно не вызывается.
+    }
+
+    /// Сдвинуть строку на позицию вверх (-1) или вниз (+1). Для контекстного меню.
+    func moveApp(bundleID: String, by delta: Int) {
+        guard let index = apps.firstIndex(where: { $0.bundleID == bundleID }) else { return }
+        moveApp(from: index, to: min(max(index + delta, 0), apps.count - 1))
+    }
+
+    /// Забыть ручной порядок и вернуться к автоматическому.
+    func resetOrder() {
+        orderStore.reset()
+        hasCustomOrder = false
+        rebuildApps(from: lastProcesses)
+    }
+
+    /// Ручной порядок важнее автоматического. Приложения, которых в нём нет,
+    /// встают в конец в автоматическом порядке: новое приложение не должно
+    /// само влезать в середину выстроенного пользователем списка.
+    private func ordered(_ list: [AudioAppState]) -> [AudioAppState] {
+        let order = orderStore.order
+        guard !order.isEmpty else { return list }
+
+        var rank: [String: Int] = [:]
+        rank.reserveCapacity(order.count)
+        for (position, bundleID) in order.enumerated() { rank[bundleID] = position }
+
+        var known: [(position: Int, app: AudioAppState)] = []
+        var unknown: [AudioAppState] = []
+        for app in list {
+            if let position = rank[app.bundleID] {
+                known.append((position, app))
+            } else {
+                unknown.append(app)
+            }
+        }
+        known.sort { $0.position < $1.position }
+        return known.map(\.app) + unknown
+    }
+
     // MARK: - Синхронизация со списком процессов
 
     private func rebuildApps(from processes: [AudioProcessInfo]) {
@@ -208,6 +296,8 @@ final class MixerViewModel: ObservableObject {
                 )
             )
         }
+
+        result = ordered(result)
 
         guard result != apps else { return }
         let playing = result.filter(\.isPlaying).count

@@ -27,8 +27,11 @@ targets:
     platform: macOS
     sources:
       - path: Sources
-    info:
-      path: Resources/Info.plist
+    # Блока info: здесь намеренно нет. Он не «указывает на файл», а ГЕНЕРИРУЕТ
+    # его — то есть каждый `xcodegen generate` затирал наш Resources/Info.plist
+    # вместе с NSAudioCaptureUsageDescription, без которого система убивает
+    # процесс при первой попытке создать process tap. Путь к плисту задаётся
+    # ниже через INFOPLIST_FILE, и этого достаточно.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.AudioMixer
@@ -36,6 +39,11 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Resources/Info.plist
         SWIFT_EMIT_LOC_STRINGS: YES
+        # Раньше team ID жил только в сгенерированном pbxproj, и каждый
+        # `xcodegen generate` его терял. Локальные сборки идут с ad-hoc
+        # подписью и переопределяют DEVELOPMENT_TEAM пустым — на них это
+        # не влияет; ключ нужен для сборки из Xcode.
+        "DEVELOPMENT_TEAM[sdk=macosx*]": RNXG5JFSA6
     dependencies:
       - sdk: CoreAudio.framework
       - sdk: AudioToolbox.framework

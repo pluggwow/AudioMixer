@@ -15,15 +15,22 @@ final class AppContainer: ObservableObject {
 
     let settings: SettingsStore
     let volumeStore: VolumeStore
+    let orderStore: AppOrderStore
     let mixerViewModel: MixerViewModel
 
     private init() {
         let settings = SettingsStore()
         let volumeStore = VolumeStore()
+        let orderStore = AppOrderStore()
 
         self.settings = settings
         self.volumeStore = volumeStore
-        self.mixerViewModel = MixerViewModel(settings: settings, volumeStore: volumeStore)
+        self.orderStore = orderStore
+        self.mixerViewModel = MixerViewModel(
+            settings: settings,
+            volumeStore: volumeStore,
+            orderStore: orderStore
+        )
     }
 
     func start() {

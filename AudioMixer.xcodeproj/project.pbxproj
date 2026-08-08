@@ -16,6 +16,7 @@
 		204D6298DE582913414058F6 /* StatusBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08396B1F3C32248EB1D1C4DA /* StatusBanner.swift */; };
 		22EC89828746DE853C592AD8 /* HotkeyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 970DB271C2D7E71BCBF7528D /* HotkeyService.swift */; };
 		23A20F8439282BC48A27910E /* VolumeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 848D6F996EBFD12A0EEF138C /* VolumeStore.swift */; };
+		28DEC9A752A64EB2437305DB /* AppListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A469DA70067B7D58F6496EF /* AppListView.swift */; };
 		2E8BD1A95E24226BD222274E /* MixerRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE98D57250B9E7793A273CF /* MixerRootView.swift */; };
 		409A8872F7B15ABB6E753993 /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD6A2586AC5BBC885207676 /* SettingsStore.swift */; };
 		480424A64578FE1195B33D23 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9EC2C8B211716EB7F481EA /* SettingsView.swift */; };
@@ -32,6 +33,7 @@
 		C3CCAB6F9FB9DD285ED2E590 /* PermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04B79B2F51B2AC2319692757 /* PermissionManager.swift */; };
 		C88AC38B120737C8C09B46D8 /* AudioMixerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 792AF0CBB112264987BF147D /* AudioMixerApp.swift */; };
 		DF200CC8A9F953B537572D3E /* AudioDeviceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 183D42D1B9FA2E8C6B211111 /* AudioDeviceManager.swift */; };
+		DFC85A460EAB861F36752BDC /* AppOrderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FFEBFEAD8C05EF6D0019BB6 /* AppOrderStore.swift */; };
 		FD210C53A3CCF9369728B7CD /* VolumeSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FDFD0758F5713FE7D579E4B /* VolumeSlider.swift */; };
 		FECF4138552B48AFA107F161 /* AppRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A66C67512A32AB272CAA5857 /* AppRowView.swift */; };
 /* End PBXBuildFile section */
@@ -42,6 +44,7 @@
 		0FDFD0758F5713FE7D579E4B /* VolumeSlider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeSlider.swift; sourceTree = "<group>"; };
 		183D42D1B9FA2E8C6B211111 /* AudioDeviceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDeviceManager.swift; sourceTree = "<group>"; };
 		1BE98D57250B9E7793A273CF /* MixerRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MixerRootView.swift; sourceTree = "<group>"; };
+		2A469DA70067B7D58F6496EF /* AppListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppListView.swift; sourceTree = "<group>"; };
 		308E8BD77A229B614B6F4696 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		3CD6A2586AC5BBC885207676 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
 		495408255CA07555F2541C41 /* AppIconProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconProvider.swift; sourceTree = "<group>"; };
@@ -50,6 +53,7 @@
 		59B6AA82DD56A91CD812DA5E /* CoreAudioUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreAudioUtilities.swift; sourceTree = "<group>"; };
 		5E9EC2C8B211716EB7F481EA /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		6BDCBB55536E40288A8FFCC5 /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = System/Library/Frameworks/AudioToolbox.framework; sourceTree = SDKROOT; };
+		6FFEBFEAD8C05EF6D0019BB6 /* AppOrderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppOrderStore.swift; sourceTree = "<group>"; };
 		792AF0CBB112264987BF147D /* AudioMixerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioMixerApp.swift; sourceTree = "<group>"; };
 		7DD9661B0033328DA6478A32 /* SystemVolumeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemVolumeController.swift; sourceTree = "<group>"; };
 		848D6F996EBFD12A0EEF138C /* VolumeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeStore.swift; sourceTree = "<group>"; };
@@ -151,6 +155,7 @@
 			isa = PBXGroup;
 			children = (
 				495408255CA07555F2541C41 /* AppIconProvider.swift */,
+				6FFEBFEAD8C05EF6D0019BB6 /* AppOrderStore.swift */,
 				970DB271C2D7E71BCBF7528D /* HotkeyService.swift */,
 				8499D6C3B66B4AA798D2AFB8 /* LoginItemService.swift */,
 				848D6F996EBFD12A0EEF138C /* VolumeStore.swift */,
@@ -185,6 +190,7 @@
 		DD1D2DCB788A2BC81B216304 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				2A469DA70067B7D58F6496EF /* AppListView.swift */,
 				A66C67512A32AB272CAA5857 /* AppRowView.swift */,
 				F57BE6D30AC2AA5FA1152467 /* MasterVolumeSection.swift */,
 				08396B1F3C32248EB1D1C4DA /* StatusBanner.swift */,
@@ -232,6 +238,8 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
 			};
 			buildConfigurationList = C7B2513C2A179529ECA7852D /* Build configuration list for PBXProject "AudioMixer" */;
 			developmentRegion = en;
@@ -260,6 +268,8 @@
 				BAE08FD32469E87C8234D87F /* AppContainer.swift in Sources */,
 				83BC8843F8FEBC351E35928D /* AppDelegate.swift in Sources */,
 				5E13B4FB61A982F208580064 /* AppIconProvider.swift in Sources */,
+				28DEC9A752A64EB2437305DB /* AppListView.swift in Sources */,
+				DFC85A460EAB861F36752BDC /* AppOrderStore.swift in Sources */,
 				FECF4138552B48AFA107F161 /* AppRowView.swift in Sources */,
 				06E1B62D97CA1A6CD3725CCD /* AudioAppState.swift in Sources */,
 				4FBC84B9EEF8BE704113C173 /* AudioDeviceInfo.swift in Sources */,

@@ -96,6 +96,7 @@ struct AudioSettingsView: View {
 
 struct AppearanceSettingsView: View {
     @EnvironmentObject private var settings: SettingsStore
+    @EnvironmentObject private var viewModel: MixerViewModel
 
     var body: some View {
         Form {
@@ -122,6 +123,21 @@ struct AppearanceSettingsView: View {
                         Text(style.title).tag(style)
                     }
                 }
+            }
+
+            Section {
+                HStack {
+                    Text("Порядок приложений")
+                    Spacer()
+                    Text(viewModel.hasCustomOrder ? "Вручную" : "Автоматический")
+                        .foregroundStyle(.secondary)
+                    Button("Сбросить") { viewModel.resetOrder() }
+                        .disabled(!viewModel.hasCustomOrder)
+                }
+            } footer: {
+                Text("Строки в панели переставляются перетаскиванием. Автоматически сверху идут те, что играют прямо сейчас.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

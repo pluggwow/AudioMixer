@@ -70,7 +70,7 @@ struct MixerRootView: View {
 
     private var appsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
+            HStack(spacing: 6) {
                 Text("Приложения")
                     .font(.system(size: 14, weight: .semibold))
                 Spacer()
@@ -78,6 +78,23 @@ struct MixerRootView: View {
                     Text("\(count) активн.")
                         .font(.system(size: 12))
                         .foregroundStyle(.tertiary)
+                }
+                // Кнопка появляется только когда порядок задан вручную —
+                // иначе непонятно, что именно она сбрасывает.
+                if viewModel.hasCustomOrder {
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            viewModel.resetOrder()
+                        }
+                    } label: {
+                        Image(systemName: "arrow.uturn.backward")
+                            .font(.system(size: 11, weight: .medium))
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.tertiary)
+                    .help("Вернуть автоматический порядок")
+                    .transition(.opacity)
                 }
             }
 
@@ -87,23 +104,22 @@ struct MixerRootView: View {
                 // Индикатор включён намеренно: без него не видно, что под
                 // видимыми строками есть ещё приложения.
                 ScrollView(.vertical, showsIndicators: true) {
-                    LazyVStack(spacing: 2) {
-                        ForEach(viewModel.apps) { app in
-                            AppRowView(
-                                app: app,
-                                showIcon: settings.showAppIcons,
-                                showPercentage: settings.showVolumePercentage,
-                                sliderStyle: settings.sliderStyle,
-                                compact: settings.compactMode,
-                                onVolumeChange: { viewModel.setVolume($0, for: app.bundleID) },
-                                onToggleMute: { viewModel.toggleMute(for: app.bundleID) }
-                            )
-                            .transition(.asymmetric(
-                                insertion: .opacity.combined(with: .offset(y: -6)),
-                                removal: .opacity.combined(with: .scale(scale: 0.97))
-                            ))
-                        }
-                    }
+                    AppListView(
+                        apps: viewModel.apps,
+                        showIcons: settings.showAppIcons,
+                        showPercentage: settings.showVolumePercentage,
+                        sliderStyle: settings.sliderStyle,
+                        compact: settings.compactMode,
+                        onVolumeChange: { bundleID, volume in
+                            viewModel.setVolume(volume, for: bundleID)
+                        },
+                        onToggleMute: { viewModel.toggleMute(for: $0) },
+                        onMove: { source, destination in
+                            viewModel.moveApp(from: source, to: destination)
+                        },
+                        onDragBegan: { viewModel.beginReordering() },
+                        onDragEnded: { viewModel.endReordering() }
+                    )
                 }
                 // Именно height, а не maxHeight: maxHeight задаёт лишь верхнюю
                 // границу, определённой высоты у ScrollView нет, и в окне,
@@ -115,7 +131,7 @@ struct MixerRootView: View {
     }
 
     private var scrollHeight: CGFloat {
-        let rowHeight: CGFloat = settings.compactMode ? 56 : 72
+        let rowHeight = AppListView.estimatedRowHeight(compact: settings.compactMode)
         let count = CGFloat(viewModel.apps.count)
         // Потолок ~6 строк: дальше панель становится выше экрана.
         return min(count * rowHeight, rowHeight * 6)

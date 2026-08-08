@@ -13,8 +13,15 @@ struct AppRowView: View {
     let sliderStyle: SliderStyleOption
     let compact: Bool
 
+    /// Строку сейчас тащат мышью.
+    var isDragged: Bool = false
+    var canMoveUp: Bool = false
+    var canMoveDown: Bool = false
+
     let onVolumeChange: (Float) -> Void
     let onToggleMute: () -> Void
+    /// Сдвиг на позицию: -1 вверх, +1 вниз.
+    var onMove: (Int) -> Void = { _ in }
 
     @State private var isHovering = false
 
@@ -71,8 +78,12 @@ struct AppRowView: View {
         .padding(.vertical, compact ? 6 : 8)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(.primary.opacity(isHovering ? 0.06 : 0))
+                .fill(.primary.opacity(backgroundOpacity))
+                .shadow(color: .black.opacity(isDragged ? 0.22 : 0), radius: 8, y: 3)
         )
+        // Приподнятая строка: видно, что именно её сейчас переставляют.
+        .scaleEffect(isDragged ? 1.02 : 1, anchor: .center)
+        .animation(.spring(response: 0.25, dampingFraction: 0.8), value: isDragged)
         .onHover { hovering in
             withAnimation(.easeOut(duration: 0.12)) { isHovering = hovering }
         }
@@ -80,7 +91,19 @@ struct AppRowView: View {
         .contextMenu {
             Button("Сбросить на 100%") { onVolumeChange(1.0) }
             Button(app.isMuted ? "Включить звук" : "Заглушить", action: onToggleMute)
+
+            Divider()
+
+            Button("Переместить выше") { onMove(-1) }
+                .disabled(!canMoveUp)
+            Button("Переместить ниже") { onMove(1) }
+                .disabled(!canMoveDown)
         }
+    }
+
+    private var backgroundOpacity: Double {
+        if isDragged { return 0.12 }
+        return isHovering ? 0.06 : 0
     }
 
     @ViewBuilder

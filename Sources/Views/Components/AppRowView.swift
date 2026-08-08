@@ -90,6 +90,12 @@ struct AppRowView: View {
         .animation(.easeInOut(duration: 0.2), value: app.isRunning)
         .padding(.horizontal, 8)
         .padding(.vertical, compact ? 6 : 8)
+        // Без contentShape кликом ловятся только сами иконка, текст и слайдер,
+        // а промежутки между ними — нет, и строка отзывается через раз.
+        .contentShape(Rectangle())
+        // Двойной клик по строке — быстрое «заглушить». Одиночный намеренно
+        // ничего не делает: он принадлежит слайдеру и кнопке внутри строки.
+        .onTapGesture(count: 2, perform: onToggleMute)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(.primary.opacity(backgroundOpacity))

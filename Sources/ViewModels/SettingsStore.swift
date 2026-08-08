@@ -1,0 +1,80 @@
+//
+//  SettingsStore.swift
+//  AudioMixer
+//
+
+import SwiftUI
+import Combine
+
+enum AppearanceMode: String, CaseIterable, Identifiable {
+    case system, light, dark
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .system: return "Системная"
+        case .light:  return "Светлая"
+        case .dark:   return "Тёмная"
+        }
+    }
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .light:  return .light
+        case .dark:   return .dark
+        }
+    }
+}
+
+enum SliderStyleOption: String, CaseIterable, Identifiable {
+    case capsule, thin
+    var id: String { rawValue }
+    var title: String { self == .capsule ? "Объёмный" : "Тонкий" }
+}
+
+@MainActor
+final class SettingsStore: ObservableObject {
+
+    @AppStorage("showDockIcon") var showDockIcon: Bool = false {
+        didSet { applyActivationPolicy() }
+    }
+    @AppStorage("showVolumePercentage") var showVolumePercentage: Bool = true
+    @AppStorage("autoShowNewAudioApps") var autoShowNewAudioApps: Bool = true
+    @AppStorage("defaultVolume") var defaultVolume: Double = 1.0
+    @AppStorage("rememberAppVolumes") var rememberAppVolumes: Bool = true
+    @AppStorage("appearanceMode") var appearanceModeRaw: String = AppearanceMode.system.rawValue
+    @AppStorage("compactMode") var compactMode: Bool = false
+    @AppStorage("showAppIcons") var showAppIcons: Bool = true
+    @AppStorage("sliderStyle") var sliderStyleRaw: String = SliderStyleOption.capsule.rawValue
+    @AppStorage("launchAtLogin") var launchAtLoginPreference: Bool = false
+
+    var appearanceMode: AppearanceMode {
+        get { AppearanceMode(rawValue: appearanceModeRaw) ?? .system }
+        set { appearanceModeRaw = newValue.rawValue }
+    }
+
+    var sliderStyle: SliderStyleOption {
+        get { SliderStyleOption(rawValue: sliderStyleRaw) ?? .capsule }
+        set { sliderStyleRaw = newValue.rawValue }
+    }
+
+    func applyActivationPolicy() {
+        NSApp.setActivationPolicy(showDockIcon ? .regular : .accessory)
+        if showDockIcon { NSApp.activate(ignoringOtherApps: false) }
+    }
+
+    func syncLoginItem() {
+        launchAtLoginPreference = LoginItemService.isEnabled
+    }
+
+    func setLaunchAtLogin(_ enabled: Bool) {
+        switch LoginItemService.setEnabled(enabled) {
+        case .success:
+            launchAtLoginPreference = enabled
+        case .failure(let error):
+            AppLog.engine.error("Login item failed: \(error.localizedDescription, privacy: .public)")
+            launchAtLoginPreference = LoginItemService.isEnabled
+        }
+    }
+}

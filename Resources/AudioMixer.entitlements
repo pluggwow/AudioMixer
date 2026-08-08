@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- App Sandbox ВЫКЛЮЧЕН намеренно.
+         Создание aggregate device и process tap из песочницы не проходит.
+         Следствие: распространение через Developer ID + notarization,
+         Mac App Store для этого приложения недоступен. -->
+    <key>com.apple.security.app-sandbox</key>
+    <false/>
+
+    <!-- Нужен при включённом Hardened Runtime для доступа к аудио. -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+</dict>
+</plist>

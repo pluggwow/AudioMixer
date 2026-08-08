@@ -1,0 +1,18 @@
+# Артефакты сборки
+.build/
+DerivedData/
+dist/
+
+# Промежуточная папка сборки DMG
+.dmgstage/
+
+# Пользовательское состояние Xcode: у каждого своё, к проекту не относится
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+
+# macOS
+.DS_Store
+
+# Локальные настройки Claude Code: привязаны к этой машине
+.claude/settings.local.json

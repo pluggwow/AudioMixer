@@ -1,1 +1,95 @@
 # AudioMixer
+
+Нативный per-app аудиомикшер для macOS. Menu Bar, SwiftUI, Core Audio Process Taps.
+
+## Требования
+
+- **macOS 14.4+** — раньше нет `AudioHardwareCreateProcessTap` / `muteBehavior`
+- Xcode 15.3+
+- Apple Silicon и Intel (universal, `ARCHS_STANDARD`)
+
+## Сборка
+
+Вариант A — XcodeGen (рекомендуется):
+
+```bash
+brew install xcodegen
+cd AudioMixer
+xcodegen generate
+open AudioMixer.xcodeproj
+```
+
+Вариант B — вручную: создать в Xcode новый **macOS → App (SwiftUI)**, удалить
+шаблонные файлы, перетащить папку `Sources` (Create groups), подключить
+`Resources/Info.plist` и `Resources/AudioMixer.entitlements`, выставить
+deployment target 14.4 и **выключить App Sandbox**.
+
+При первом запуске macOS запросит разрешение на захват аудио. Без него работает
+только мастер-громкость; панель покажет баннер с кнопкой в Системные настройки.
+
+## Архитектура
+
+```
+Views ──> ViewModels ──> Services / Audio ──> Core Audio
+         (MixerViewModel)
+```
+
+Views не импортируют CoreAudio вообще. Единственная точка, где UI встречается с
+аудиослоем, — `MixerViewModel`.
+
+| Слой | Файлы | Ответственность |
+|---|---|---|
+| `Audio/` | `AudioProcessTapEngine` | таппы, агрегат, IOProc, gain |
+| | `RenderState` | realtime-микс, единственный код на RT-потоке |
+| | `AudioProcessMonitor` | список аудио-процессов через нотификации |
+| | `AudioDeviceManager` | default output, список устройств |
+| | `SystemVolumeController` | мастер-громкость реального устройства |
+| | `PermissionManager` | проверка TCC пробным таппом |
+| `Services/` | `VolumeStore` | персистентность по bundle ID |
+| | `LoginItemService` | `SMAppService` |
+| | `HotkeyService` | протокол-задел, реализации нет |
+
+### Как работает per-app volume
+
+Публичного API «задать громкость чужого процесса» в macOS нет. Реализовано так:
+
+1. Приложениям с громкостью ≠ 100% создаётся `CATapDescription` с
+   `muteBehavior = .mutedWhenTapped` — система сама глушит их оригинальный выход.
+2. Таппы подключаются входами к одному приватному aggregate device,
+   main sub-device которого — реальное устройство вывода.
+3. Один IOProc читает входы, умножает на gain, пишет в выход.
+
+Общий clock domain → нет ресемплинга и дрейфа. Латентность = один буфер (~5 мс).
+Feedback loop невозможен: таппы exclusive, наш собственный рендер в них не входит.
+
+**Приложения на 100% без mute не таппятся вообще.** Если таких нет — агрегат
+уничтожается, IOProc останавливается, потребление CPU падает до нуля.
+
+### Ограничения, которые нельзя обойти
+
+- **App Sandbox выключен** → Mac App Store недоступен, только Developer ID + notarization.
+- Пересечение отметки 100% создаёт/удаляет tap → микро-глитч. Смягчено дебаунсом 150 мс.
+- Устройства с цифровым выходом (HDMI, оптика, часть DAC) не поддерживают
+  программную регулировку — мастер-слайдер для них деактивируется.
+
+## Что нужно проверить на реальной машине
+
+Этот код написан без доступа к Xcode, поэтому первый прогон компилятора — за вами.
+Места, где я закладывался на поведение API и где вероятнее всего понадобится правка:
+
+1. **Порядок и раскладка входных буферов агрегата.** `RenderState.render` считает,
+   что входные каналы идут в порядке tap-list. Если Core Audio отдаёт таппы
+   отдельными буферами в другом порядке — правится маппинг в `pushGainMapUnsafe`.
+2. **Где именно живёт TCC-разрешение.** `PermissionManager.settingsURLs` перебирает
+   Microphone → Screen Recording → общий Privacy. На вашей версии macOS нужный
+   пункт может быть один конкретный.
+3. **`description.isPrivate`** — имя, под которым ObjC-свойство `private` импортируется в Swift.
+4. **`MainActor.assumeIsolated` в `applicationWillTerminate`** — при строгой конкурентности
+   может потребоваться другой способ синхронного teardown.
+
+## Дальше по плану
+
+- [ ] Горячие клавиши (`CGEvent.tapCreate` на `.systemDefined` + Accessibility)
+- [ ] Плавная интерполяция gain (сейчас смена мгновенная — на резком движении слайдера возможен щелчок)
+- [ ] vDSP вместо скалярного цикла в `render`
+- [ ] Локализация (сейчас строки захардкожены по-русски)

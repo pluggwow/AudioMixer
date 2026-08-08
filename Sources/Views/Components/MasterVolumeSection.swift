@@ -54,7 +54,11 @@ struct MasterVolumeSection: View {
                 }
                 .buttonStyle(.plain)
                 .contentTransition(.symbolEffect(.replace))
-                .help(systemVolume.isMuted ? "Включить звук" : "Заглушить")
+                .disabled(!systemVolume.isMuteSupported)
+                .opacity(systemVolume.isMuteSupported ? 1 : 0.4)
+                .help(systemVolume.isMuteSupported
+                      ? (systemVolume.isMuted ? "Включить звук" : "Заглушить")
+                      : "Устройство не поддерживает программное отключение звука")
             }
 
             if !systemVolume.isControllable {

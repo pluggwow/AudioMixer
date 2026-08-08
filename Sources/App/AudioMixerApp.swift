@@ -17,7 +17,7 @@ struct AudioMixerApp: App {
                 .environmentObject(container.mixerViewModel)
                 .environmentObject(container.settings)
         } label: {
-            Image(systemName: "slider.horizontal.2.square")
+            MenuBarIcon(systemVolume: container.mixerViewModel.systemVolume)
         }
         .menuBarExtraStyle(.window)
 
@@ -26,5 +26,22 @@ struct AudioMixerApp: App {
                 .environmentObject(container.mixerViewModel)
                 .environmentObject(container.settings)
         }
+    }
+}
+
+/// Значок в строке меню — такой же динамик, как у системного регулятора
+/// громкости, и так же отзывается на её уровень.
+///
+/// Отдельный View, а не Image прямо в label: @StateObject на контейнере
+/// следит только за самим контейнером, а уровень громкости живёт во вложенном
+/// объекте — без своего @ObservedObject значок замер бы на состоянии,
+/// в котором приложение запустилось.
+private struct MenuBarIcon: View {
+
+    @ObservedObject var systemVolume: SystemVolumeController
+
+    var body: some View {
+        Image(systemName: systemVolume.symbolName)
+            .contentTransition(.symbolEffect(.replace))
     }
 }

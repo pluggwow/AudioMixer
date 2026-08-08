@@ -83,6 +83,17 @@ final class SystemVolumeController: ObservableObject {
 
     func toggleMute() { isMuted.toggle() }
 
+    /// Значок громкости как у системного регулятора: число волн растёт с
+    /// уровнем, на нуле и на mute — перечёркнутый динамик.
+    var symbolName: String {
+        if isMuted || volume < 0.001 { return "speaker.slash.fill" }
+        switch volume {
+        case ..<0.34: return "speaker.wave.1.fill"
+        case ..<0.67: return "speaker.wave.2.fill"
+        default:      return "speaker.wave.3.fill"
+        }
+    }
+
     private func writeVolume(_ value: Float) {
         guard deviceID.isValid, isControllable else { return }
         try? deviceID.write(Float32(max(0, min(value, 1))), to: volumeProperty)

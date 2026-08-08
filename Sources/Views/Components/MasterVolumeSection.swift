@@ -47,7 +47,7 @@ struct MasterVolumeSection: View {
                 Button {
                     systemVolume.toggleMute()
                 } label: {
-                    Image(systemName: systemVolume.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                    Image(systemName: systemVolume.symbolName)
                         .font(.system(size: 13, weight: .medium))
                         .frame(width: 28, height: 28)
                         .contentShape(Rectangle())

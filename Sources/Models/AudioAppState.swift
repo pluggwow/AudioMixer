@@ -28,13 +28,18 @@ struct AudioAppState: Identifiable, Equatable {
 
     var percentText: String { "\(Int((volume * 100).rounded()))%" }
 
+    /// Звука нет — заглушено или громкость выведена в ноль. Для слуха это одно
+    /// и то же, поэтому и выглядят такие строки одинаково: серыми.
+    /// Разница только в том, что mute помнит прежний уровень, а ноль — нет,
+    /// и видна она в подписи: «Выкл.» против «0%».
+    var isSilent: Bool { isMuted || volume < 0.001 }
+
     var speakerSymbol: String {
-        if isMuted { return "speaker.slash.fill" }
+        if isSilent { return "speaker.slash.fill" }
         switch volume {
-        case ..<0.001: return "speaker.fill"
-        case ..<0.34:  return "speaker.wave.1.fill"
-        case ..<0.67:  return "speaker.wave.2.fill"
-        default:       return "speaker.wave.3.fill"
+        case ..<0.34: return "speaker.wave.1.fill"
+        case ..<0.67: return "speaker.wave.2.fill"
+        default:      return "speaker.wave.3.fill"
         }
     }
 

@@ -41,7 +41,7 @@ struct AppRowView: View {
                         .font(.system(size: compact ? 12 : 14, weight: .medium))
                         .lineLimit(1)
                         .truncationMode(.tail)
-                        .foregroundStyle(app.isMuted ? .secondary : .primary)
+                        .foregroundStyle(app.isSilent ? .secondary : .primary)
 
                     if app.isPinned {
                         Image(systemName: "pin.fill")
@@ -66,8 +66,13 @@ struct AppRowView: View {
                         set: { onVolumeChange($0) }
                     ),
                     style: sliderStyle == .thin ? .compact : .prominent,
+                    // Выключаем слайдер только на mute. На нуле он обязан
+                    // остаться живым — иначе громкость неоткуда поднять.
                     isEnabled: !app.isMuted,
-                    accentTint: .accentColor
+                    // Но выглядит на нуле так же, как на mute: ручка слайдера
+                    // видна и при нулевой ширине, цветной она бы выбивалась
+                    // из серой строки.
+                    accentTint: app.isSilent ? .secondary : .accentColor
                 )
             }
 
@@ -76,7 +81,7 @@ struct AppRowView: View {
                     .font(.system(size: 14, weight: .medium))
                     .frame(width: 28, height: 28)
                     .contentShape(Rectangle())
-                    .foregroundStyle(app.isMuted ? Color.secondary : Color.primary)
+                    .foregroundStyle(app.isSilent ? Color.secondary : Color.primary)
             }
             .buttonStyle(.plain)
             .contentTransition(.symbolEffect(.replace))
@@ -107,7 +112,7 @@ struct AppRowView: View {
         .onHover { hovering in
             withAnimation(.easeOut(duration: 0.12)) { isHovering = hovering }
         }
-        .animation(.spring(response: 0.3, dampingFraction: 0.75), value: app.isMuted)
+        .animation(.spring(response: 0.3, dampingFraction: 0.75), value: app.isSilent)
         .contextMenu {
             Button("Сбросить на 100%") { onVolumeChange(1.0) }
             Button(app.isMuted ? "Включить звук" : "Заглушить", action: onToggleMute)
@@ -137,8 +142,8 @@ struct AppRowView: View {
                 .resizable()
                 .interpolation(.high)
                 .aspectRatio(contentMode: .fit)
-                .saturation(app.isMuted ? 0.2 : 1)
-                .opacity(app.isMuted ? 0.65 : 1)
+                .saturation(app.isSilent ? 0.2 : 1)
+                .opacity(app.isSilent ? 0.65 : 1)
         } else {
             RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .fill(.quaternary)

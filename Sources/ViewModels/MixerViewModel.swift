@@ -192,8 +192,21 @@ final class MixerViewModel: ObservableObject {
         apps[index].isPinned = pinned
         volumeStore.setPinned(pinned, for: bundleID, displayName: apps[index].name)
 
+        if pinned {
+            // Закреплённое поднимается наверх и там фиксируется. Порядок
+            // сохраняется даже если строка уже первая: иначе автоматический
+            // порядок («играющие первыми») увёл бы её вниз, стоит зазвучать
+            // соседу — а закрепляют как раз чтобы этого не было.
+            var reordered = apps
+            reordered.insert(reordered.remove(at: index), at: 0)
+            commitOrder(reordered)
+            return
+        }
+
         // Открепили закрытое приложение — держать строку больше не на чем.
-        if !pinned && !apps[index].isRunning {
+        // Позицию открепления не трогаем: наверх поднимает закрепление,
+        // а не всякое изменение строки.
+        if !apps[index].isRunning {
             apps.remove(at: index)
         }
     }
@@ -220,14 +233,18 @@ final class MixerViewModel: ObservableObject {
 
         var reordered = apps
         reordered.insert(reordered.remove(at: source), at: destination)
-        apps = reordered
+        commitOrder(reordered)
+    }
 
+    /// Принять новый порядок строк и запомнить его.
+    ///
+    /// Движку порядок безразличен: `applyUnsafe` сравнивает МНОЖЕСТВА pid,
+    /// так что перестановка не пересобирает агрегат и не даёт щелчка в звуке.
+    /// Поэтому `pushLevelsToEngine()` отсюда намеренно не вызывается.
+    private func commitOrder(_ reordered: [AudioAppState]) {
+        apps = reordered
         orderStore.apply(visibleOrder: reordered.map(\.bundleID))
         hasCustomOrder = orderStore.isCustom
-
-        // Движку порядок безразличен: applyUnsafe сравнивает МНОЖЕСТВА pid,
-        // так что перестановка строк не пересобирает агрегат и не даёт щелчка.
-        // Поэтому pushLevelsToEngine() здесь намеренно не вызывается.
     }
 
     /// Сдвинуть строку на позицию вверх (-1) или вниз (+1). Для контекстного меню.

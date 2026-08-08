@@ -18,6 +18,11 @@ struct AudioAppState: Identifiable, Equatable {
     var volume: Float
     var isMuted: Bool
     var isPlaying: Bool
+    /// Закреплено пользователем: строка остаётся в списке и после закрытия приложения.
+    var isPinned: Bool = false
+    /// Приложение сейчас запущено. `false` — это закреплённая строка закрытого
+    /// приложения: громкость ей выставить можно, а таппить нечего.
+    var isRunning: Bool = true
 
     var id: String { bundleID }
 
@@ -39,6 +44,8 @@ struct AudioAppState: Identifiable, Equatable {
         lhs.volume == rhs.volume &&
         lhs.isMuted == rhs.isMuted &&
         lhs.isPlaying == rhs.isPlaying &&
+        lhs.isPinned == rhs.isPinned &&
+        lhs.isRunning == rhs.isRunning &&
         lhs.name == rhs.name
     }
 }
@@ -50,16 +57,36 @@ struct StoredAppSettings: Codable, Equatable {
     var rememberVolume: Bool
     var displayName: String
     var lastSeen: Date
+    var isPinned: Bool
 
     init(volume: Float = 1.0,
          isMuted: Bool = false,
          rememberVolume: Bool = true,
          displayName: String = "",
-         lastSeen: Date = .now) {
+         lastSeen: Date = .now,
+         isPinned: Bool = false) {
         self.volume = volume
         self.isMuted = isMuted
         self.rememberVolume = rememberVolume
         self.displayName = displayName
         self.lastSeen = lastSeen
+        self.isPinned = isPinned
+    }
+
+    /// Декодер написан руками из-за одной особенности Swift: синтезированный
+    /// `init(from:)` НЕ подставляет значения по умолчанию для отсутствующих
+    /// ключей — он бросает `keyNotFound`. Для нового поля это означало бы, что
+    /// у всех, кто уже пользовался приложением, настройки не прочитаются, а
+    /// VolumeStore в ответ заблокирует запись — со стороны «пропали все
+    /// сохранённые громкости». Поэтому новые поля добавлять только через
+    /// `decodeIfPresent`.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        volume = try container.decode(Float.self, forKey: .volume)
+        isMuted = try container.decode(Bool.self, forKey: .isMuted)
+        rememberVolume = try container.decode(Bool.self, forKey: .rememberVolume)
+        displayName = try container.decode(String.self, forKey: .displayName)
+        lastSeen = try container.decode(Date.self, forKey: .lastSeen)
+        isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
     }
 }

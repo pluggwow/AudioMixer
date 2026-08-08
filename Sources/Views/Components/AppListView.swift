@@ -21,8 +21,13 @@ struct AppListView: View {
     let sliderStyle: SliderStyleOption
     let compact: Bool
 
+    /// Высота видимой области списка — по ней определяются краевые зоны автопрокрутки.
+    let viewportHeight: CGFloat
+    let scrollProxy: ScrollViewProxy
+
     let onVolumeChange: (String, Float) -> Void
     let onToggleMute: (String) -> Void
+    let onTogglePin: (String) -> Void
     let onMove: (Int, Int) -> Void
     let onDragBegan: () -> Void
     let onDragEnded: () -> Void
@@ -31,11 +36,24 @@ struct AppListView: View {
     /// высоту, поэтому константа живёт здесь одна на оба места.
     static func estimatedRowHeight(compact: Bool) -> CGFloat { compact ? 56 : 72 }
 
+    /// Система координат видимой области. Задаётся снаружи, на ScrollView:
+    /// позиция курсора нужна относительно окна списка, а не относительно
+    /// содержимого, которое во время автопрокрутки едет само.
+    static let viewportSpace = "mixerAppListViewport"
+
     private static let spacing: CGFloat = 2
+    /// Ширина краевой полосы, в которой начинается автопрокрутка.
+    private static let autoScrollEdge: CGFloat = 26
+    private static let autoScrollTick: Duration = .milliseconds(130)
 
     @State private var draggingID: String?
     @State private var dragTranslation: CGFloat = 0
     @State private var measuredRowHeight: CGFloat = 0
+
+    /// На сколько строк список уехал автопрокруткой за текущее перетаскивание.
+    @State private var autoScrollShift: Int = 0
+    @State private var autoScrollDirection: Int = 0
+    @State private var autoScrollTask: Task<Void, Never>?
 
     var body: some View {
         LazyVStack(spacing: Self.spacing) {
@@ -47,6 +65,7 @@ struct AppListView: View {
             guard height > 0 else { return }
             measuredRowHeight = height
         }
+        .onDisappear { stopAutoScroll() }
     }
 
     @ViewBuilder
@@ -64,6 +83,7 @@ struct AppListView: View {
             canMoveDown: index < apps.count - 1,
             onVolumeChange: { onVolumeChange(app.bundleID, $0) },
             onToggleMute: { onToggleMute(app.bundleID) },
+            onTogglePin: { onTogglePin(app.bundleID) },
             onMove: { delta in move(from: index, to: index + delta) }
         )
         .background(
@@ -97,16 +117,23 @@ struct AppListView: View {
         return apps.firstIndex { $0.bundleID == draggingID }
     }
 
+    /// Смещение строки от её места в списке. Автопрокрутка входит сюда наравне
+    /// с движением мыши: содержимое уехало на строку — значит, чтобы остаться
+    /// под курсором, строка должна сместиться на столько же.
+    private var draggedVisualOffset: CGFloat {
+        dragTranslation + CGFloat(autoScrollShift) * step
+    }
+
     /// Куда строка встанет, если отпустить прямо сейчас.
     private var targetIndex: Int? {
         guard let from = draggedIndex, step > 0 else { return nil }
-        let shift = Int((dragTranslation / step).rounded())
+        let shift = Int((draggedVisualOffset / step).rounded())
         return min(max(from + shift, 0), apps.count - 1)
     }
 
     private func offset(at index: Int) -> CGFloat {
         guard let from = draggedIndex, let to = targetIndex else { return 0 }
-        if index == from { return dragTranslation }
+        if index == from { return draggedVisualOffset }
         // Строки между исходной и целевой позицией расступаются на шаг.
         if from < to, index > from, index <= to { return -step }
         if from > to, index >= to, index < from { return step }
@@ -115,14 +142,17 @@ struct AppListView: View {
 
     private func dragGesture(for bundleID: String) -> some Gesture {
         // minimumDistance > 0: иначе жест перехватывал бы обычные клики по строке.
-        DragGesture(minimumDistance: 6)
+        // Координаты видимой области, а не строки: по ним видно приближение к краю.
+        DragGesture(minimumDistance: 6, coordinateSpace: .named(Self.viewportSpace))
             .onChanged { value in
                 if draggingID == nil {
                     draggingID = bundleID
+                    autoScrollShift = 0
                     onDragBegan()
                 }
                 guard draggingID == bundleID else { return }
                 dragTranslation = value.translation.height
+                updateAutoScroll(pointerY: value.location.y)
             }
             .onEnded { _ in
                 guard draggingID == bundleID else { return }
@@ -134,11 +164,13 @@ struct AppListView: View {
         // Порядок важен: индексы считаются по старому списку, до перестановки.
         let from = draggedIndex
         let to = targetIndex
+        stopAutoScroll()
 
         withAnimation(.spring(response: 0.26, dampingFraction: 0.82)) {
             if let from, let to, from != to { onMove(from, to) }
             draggingID = nil
             dragTranslation = 0
+            autoScrollShift = 0
         }
         onDragEnded()
     }
@@ -148,6 +180,69 @@ struct AppListView: View {
         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
             onMove(source, destination)
         }
+    }
+
+    // MARK: - Автопрокрутка у краёв
+
+    /// Список короче окна — прокручивать нечего.
+    private var contentOverflows: Bool {
+        CGFloat(apps.count) * step > viewportHeight + 1
+    }
+
+    private func updateAutoScroll(pointerY: CGFloat) {
+        guard contentOverflows else { return }
+
+        let direction: Int
+        if pointerY < Self.autoScrollEdge {
+            direction = -1
+        } else if pointerY > viewportHeight - Self.autoScrollEdge {
+            direction = 1
+        } else {
+            direction = 0
+        }
+
+        guard direction != autoScrollDirection else { return }
+        autoScrollDirection = direction
+        if direction == 0 {
+            stopAutoScroll()
+        } else {
+            startAutoScroll()
+        }
+    }
+
+    private func startAutoScroll() {
+        guard autoScrollTask == nil else { return }
+        autoScrollTask = Task { @MainActor in
+            // Направление читается на каждом витке: курсор мог переехать
+            // от верхнего края к нижнему, не отпуская кнопку.
+            // Упёрлись в конец списка — не выходим, а ждём: пользователь может
+            // потянуть обратно, не покидая краевую зону, и прокрутка снова
+            // станет возможна. Выход — только по уходу курсора от края.
+            while !Task.isCancelled, autoScrollDirection != 0 {
+                _ = scrollOneRow(autoScrollDirection)
+                try? await Task.sleep(for: Self.autoScrollTick)
+            }
+            autoScrollTask = nil
+        }
+    }
+
+    /// Прокрутить на строку в заданную сторону. `false` — дальше некуда.
+    private func scrollOneRow(_ direction: Int) -> Bool {
+        guard let current = targetIndex else { return false }
+        let next = current + direction
+        guard apps.indices.contains(next) else { return false }
+
+        autoScrollShift += direction
+        withAnimation(.linear(duration: 0.12)) {
+            scrollProxy.scrollTo(apps[next].bundleID, anchor: direction < 0 ? .top : .bottom)
+        }
+        return true
+    }
+
+    private func stopAutoScroll() {
+        autoScrollDirection = 0
+        autoScrollTask?.cancel()
+        autoScrollTask = nil
     }
 }
 

@@ -59,6 +59,25 @@ final class VolumeStore: ObservableObject {
         scheduleSave()
     }
 
+    /// Закрепление не зависит от «запоминать громкости»: это не громкость,
+    /// а состав списка, и запись нужна даже для приложения, которому
+    /// громкость никогда не меняли — записи в storage для него ещё нет.
+    func setPinned(_ pinned: Bool, for bundleID: String, displayName: String) {
+        var entry = storage[bundleID] ?? StoredAppSettings()
+        entry.isPinned = pinned
+        entry.displayName = displayName.isEmpty ? entry.displayName : displayName
+        entry.lastSeen = .now
+        storage[bundleID] = entry
+        scheduleSave()
+    }
+
+    /// Закреплённые приложения: из них строятся строки для тех, кто сейчас закрыт.
+    var pinned: [(bundleID: String, settings: StoredAppSettings)] {
+        storage
+            .filter(\.value.isPinned)
+            .map { ($0.key, $0.value) }
+    }
+
     func setRememberVolume(_ remember: Bool, for bundleID: String) {
         guard var entry = storage[bundleID] else { return }
         entry.rememberVolume = remember

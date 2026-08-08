@@ -20,6 +20,7 @@ struct AppRowView: View {
 
     let onVolumeChange: (Float) -> Void
     let onToggleMute: () -> Void
+    var onTogglePin: () -> Void = {}
     /// Сдвиг на позицию: -1 вверх, +1 вниз.
     var onMove: (Int) -> Void = { _ in }
 
@@ -41,6 +42,13 @@ struct AppRowView: View {
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .foregroundStyle(app.isMuted ? .secondary : .primary)
+
+                    if app.isPinned {
+                        Image(systemName: "pin.fill")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.tertiary)
+                            .help("Закреплено")
+                    }
 
                     Spacer(minLength: 4)
 
@@ -74,6 +82,12 @@ struct AppRowView: View {
             .contentTransition(.symbolEffect(.replace))
             .help(app.isMuted ? "Включить звук" : "Заглушить")
         }
+        // Закреплённое, но закрытое приложение — бесцветная строка. Обесцвечивается
+        // всё разом, вместе с заливкой слайдера: так сразу видно, что звука за
+        // этой строкой сейчас нет, но громкость ей выставить можно.
+        .saturation(app.isRunning ? 1 : 0)
+        .opacity(app.isRunning ? 1 : 0.55)
+        .animation(.easeInOut(duration: 0.2), value: app.isRunning)
         .padding(.horizontal, 8)
         .padding(.vertical, compact ? 6 : 8)
         .background(
@@ -91,6 +105,10 @@ struct AppRowView: View {
         .contextMenu {
             Button("Сбросить на 100%") { onVolumeChange(1.0) }
             Button(app.isMuted ? "Включить звук" : "Заглушить", action: onToggleMute)
+
+            Divider()
+
+            Button(app.isPinned ? "Открепить" : "Закрепить", action: onTogglePin)
 
             Divider()
 

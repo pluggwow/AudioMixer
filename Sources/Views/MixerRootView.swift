@@ -101,31 +101,41 @@ struct MixerRootView: View {
             if viewModel.apps.isEmpty {
                 EmptyAppsView()
             } else {
-                // Индикатор включён намеренно: без него не видно, что под
-                // видимыми строками есть ещё приложения.
-                ScrollView(.vertical, showsIndicators: true) {
-                    AppListView(
-                        apps: viewModel.apps,
-                        showIcons: settings.showAppIcons,
-                        showPercentage: settings.showVolumePercentage,
-                        sliderStyle: settings.sliderStyle,
-                        compact: settings.compactMode,
-                        onVolumeChange: { bundleID, volume in
-                            viewModel.setVolume(volume, for: bundleID)
-                        },
-                        onToggleMute: { viewModel.toggleMute(for: $0) },
-                        onMove: { source, destination in
-                            viewModel.moveApp(from: source, to: destination)
-                        },
-                        onDragBegan: { viewModel.beginReordering() },
-                        onDragEnded: { viewModel.endReordering() }
-                    )
+                // ScrollViewReader снаружи ScrollView: изнутри прокси не достать,
+                // а он нужен списку для автопрокрутки, когда строку тащат к краю.
+                ScrollViewReader { scrollProxy in
+                    // Индикатор включён намеренно: без него не видно, что под
+                    // видимыми строками есть ещё приложения.
+                    ScrollView(.vertical, showsIndicators: true) {
+                        AppListView(
+                            apps: viewModel.apps,
+                            showIcons: settings.showAppIcons,
+                            showPercentage: settings.showVolumePercentage,
+                            sliderStyle: settings.sliderStyle,
+                            compact: settings.compactMode,
+                            viewportHeight: scrollHeight,
+                            scrollProxy: scrollProxy,
+                            onVolumeChange: { bundleID, volume in
+                                viewModel.setVolume(volume, for: bundleID)
+                            },
+                            onToggleMute: { viewModel.toggleMute(for: $0) },
+                            onTogglePin: { viewModel.togglePin(for: $0) },
+                            onMove: { source, destination in
+                                viewModel.moveApp(from: source, to: destination)
+                            },
+                            onDragBegan: { viewModel.beginReordering() },
+                            onDragEnded: { viewModel.endReordering() }
+                        )
+                    }
+                    // Именно height, а не maxHeight: maxHeight задаёт лишь верхнюю
+                    // границу, определённой высоты у ScrollView нет, и в окне,
+                    // которое подгоняется под содержимое, он схлопывается в ноль —
+                    // строки есть, но места им не отводится.
+                    .frame(height: scrollHeight)
+                    // Курсор во время перетаскивания меряется относительно этой
+                    // области: содержимое при автопрокрутке едет само.
+                    .coordinateSpace(name: AppListView.viewportSpace)
                 }
-                // Именно height, а не maxHeight: maxHeight задаёт лишь верхнюю
-                // границу, определённой высоты у ScrollView нет, и в окне,
-                // которое подгоняется под содержимое, он схлопывается в ноль —
-                // строки есть, но места им не отводится.
-                .frame(height: scrollHeight)
             }
         }
     }

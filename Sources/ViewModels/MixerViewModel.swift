@@ -180,6 +180,24 @@ final class MixerViewModel: ObservableObject {
         )
     }
 
+    // MARK: - Закрепление
+
+    /// Закрепить/открепить строку. Закреплённое приложение остаётся в списке
+    /// после закрытия — бесцветной строкой, которой можно заранее выставить
+    /// громкость.
+    func togglePin(for bundleID: String) {
+        guard let index = apps.firstIndex(where: { $0.bundleID == bundleID }) else { return }
+
+        let pinned = !apps[index].isPinned
+        apps[index].isPinned = pinned
+        volumeStore.setPinned(pinned, for: bundleID, displayName: apps[index].name)
+
+        // Открепили закрытое приложение — держать строку больше не на чем.
+        if !pinned && !apps[index].isRunning {
+            apps.remove(at: index)
+        }
+    }
+
     // MARK: - Порядок строк
 
     /// Строку взяли мышью. На время перетаскивания список замораживается.
@@ -272,6 +290,8 @@ final class MixerViewModel: ObservableObject {
                 updated.objectID = process.objectID
                 updated.isPlaying = process.isRunningOutput
                 updated.name = process.name
+                // Приложение могло только что запуститься — строка была бесцветной.
+                updated.isRunning = true
                 result.append(updated)
                 continue
             }
@@ -292,11 +312,14 @@ final class MixerViewModel: ObservableObject {
                     icon: AppIconProvider.shared.icon(bundleID: process.bundleID, pid: process.ownerPID),
                     volume: volume,
                     isMuted: muted,
-                    isPlaying: process.isRunningOutput
+                    isPlaying: process.isRunningOutput,
+                    isPinned: volumeStore.settings(for: process.bundleID)?.isPinned ?? false,
+                    isRunning: true
                 )
             )
         }
 
+        result.append(contentsOf: offlinePinnedApps(excluding: seenBundleIDs))
         result = ordered(result)
 
         guard result != apps else { return }
@@ -306,6 +329,31 @@ final class MixerViewModel: ObservableObject {
         )
         apps = result
         pushLevelsToEngine()
+    }
+
+    /// Строки для закреплённых приложений, которых сейчас нет среди аудиопроцессов.
+    /// Имя и иконка берутся из сохранённых настроек и из бандла на диске —
+    /// запущенный процесс для этого не нужен.
+    private func offlinePinnedApps(excluding running: Set<String>) -> [AudioAppState] {
+        volumeStore.pinned
+            .filter { !running.contains($0.bundleID) }
+            .map { entry in
+                AudioAppState(
+                    bundleID: entry.bundleID,
+                    pid: 0,
+                    objectID: .unknown,
+                    name: entry.settings.displayName.isEmpty ? entry.bundleID : entry.settings.displayName,
+                    icon: AppIconProvider.shared.icon(bundleID: entry.bundleID, pid: 0),
+                    volume: entry.settings.volume,
+                    isMuted: entry.settings.isMuted,
+                    isPlaying: false,
+                    isPinned: true,
+                    isRunning: false
+                )
+            }
+            // Порядок словаря не определён, а список не должен прыгать между
+            // перестроениями. Ручной порядок, если он задан, всё равно главнее.
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
     private func pushLevelsToEngine() {
@@ -319,7 +367,9 @@ final class MixerViewModel: ObservableObject {
             return
         }
 
-        let levels = apps.map {
+        // Только запущенные: у закреплённой строки закрытого приложения pid
+        // невалидный, и движок безуспешно пытался бы навесить на него tap.
+        let levels = apps.filter(\.isRunning).map {
             AudioProcessTapEngine.Level(pid: $0.pid, volume: $0.volume, isMuted: $0.isMuted)
         }
         engine.apply(levels: levels)

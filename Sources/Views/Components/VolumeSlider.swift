@@ -73,10 +73,10 @@ struct VolumeSlider: View {
             // Подсказку рисует не слайдер, а панель: изнутри списка она
             // упиралась бы в край прокручиваемой области и обрезалась —
             // ровно это и происходило у самой верхней строки.
-            .anchorPreference(key: SliderValueTipKey.self,
+            .anchorPreference(key: HoverTipKey.self,
                               value: .point(CGPoint(x: center, y: 0))) { anchor in
                 guard let hoverLabel, isEnabled, showsTip(knobCenter: center) else { return nil }
-                return SliderValueTip(text: hoverLabel, anchor: anchor)
+                return HoverTip(text: hoverLabel, anchor: anchor)
             }
             .gesture(
                 DragGesture(minimumDistance: 0)
@@ -160,26 +160,27 @@ struct VolumeSlider: View {
 }
 
 
-// MARK: - Подсказка со значением
+// MARK: - Всплывающая подсказка
 
-/// Где и что показать над ручкой слайдера.
+/// Что и где показать всплывающей подсказкой: проценты над ручкой слайдера
+/// или полное название приложения, которое не поместилось в строку.
 ///
-/// Через preference, а не через оверлей внутри слайдера: подсказка должна
-/// рисоваться поверх всей панели. Внутри списка её обрезает ScrollView,
-/// а внутри строки — не хватает высоты.
-struct SliderValueTip: Equatable {
+/// Через preference, а не через оверлей на месте: подсказка должна рисоваться
+/// поверх всей панели. Внутри списка её обрезает ScrollView, а внутри строки —
+/// не хватает высоты.
+struct HoverTip: Equatable {
     let text: String
     let anchor: Anchor<CGPoint>
 }
 
-struct SliderValueTipKey: PreferenceKey {
-    static let defaultValue: SliderValueTip? = nil
-    static func reduce(value: inout SliderValueTip?, nextValue: () -> SliderValueTip?) {
+struct HoverTipKey: PreferenceKey {
+    static let defaultValue: HoverTip? = nil
+    static func reduce(value: inout HoverTip?, nextValue: () -> HoverTip?) {
         value = nextValue() ?? value
     }
 }
 
-struct SliderValueBubble: View {
+struct HoverTipBubble: View {
     let text: String
 
     var body: some View {

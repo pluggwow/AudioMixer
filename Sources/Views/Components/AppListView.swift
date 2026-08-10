@@ -82,6 +82,7 @@ struct AppListView: View {
             showPercentage: showPercentage,
             sliderStyle: sliderStyle,
             availableDevices: availableDevices,
+            nameWidth: nameColumnWidth,
             isDragged: isDragged,
             canMoveUp: index > allowedRange(for: index).lower,
             canMoveDown: index < allowedRange(for: index).upper,
@@ -118,6 +119,12 @@ struct AppListView: View {
     private var draggedIndex: Int? {
         guard let draggingID else { return nil }
         return apps.firstIndex { $0.bundleID == draggingID }
+    }
+
+    /// Ширина колонки названий, общая на весь список: по самому длинному имени,
+    /// но не больше потолка. Общая — чтобы слайдеры стояли по одной вертикали.
+    private var nameColumnWidth: CGFloat {
+        AppNameMetrics.columnWidth(for: apps)
     }
 
     /// Закреплённые строки идут подряд с начала списка — так их выстраивает

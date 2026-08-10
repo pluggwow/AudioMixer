@@ -74,12 +74,15 @@ struct MixerRootView: View {
         .background(.ultraThinMaterial)
         // Подсказка со значением рисуется здесь, поверх всего: внутри списка
         // её обрезал бы ScrollView, а внутри строки не хватает высоты.
-        .overlayPreferenceValue(SliderValueTipKey.self) { tip in
+        .overlayPreferenceValue(HoverTipKey.self) { tip in
             GeometryReader { proxy in
                 if let tip {
                     let point = proxy[tip.anchor]
-                    SliderValueBubble(text: tip.text)
-                        .position(x: point.x, y: point.y - 12)
+                    HoverTipBubble(text: tip.text)
+                        // Придерживаем у краёв: длинное название приложения
+                        // иначе наполовину уехало бы за пределы панели.
+                        .position(x: min(max(point.x, 60), panelWidth - 60),
+                                  y: point.y - 12)
                 }
             }
             .allowsHitTesting(false)

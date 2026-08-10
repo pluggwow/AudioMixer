@@ -99,6 +99,12 @@ final class AudioProcessTapEngine {
     private var taps: [pid_t: TapSlot] = [:]
     private var routes: [String: Route] = [:]
 
+    /// Процессы, на которых тапп создать не удалось. Нужны, чтобы немедленный
+    /// путь не превращался в долбёжку: без этого списка каждое движение
+    /// слайдера заново пыталось бы создать заведомо несоздаваемый тапп —
+    /// шестьдесят неудачных вызовов Core Audio в секунду.
+    private var tapFailures: Set<pid_t> = []
+
     private var outputDeviceUID: String?
     private var lastLevels: [Level] = []
     private var pendingWorkItem: DispatchWorkItem?
@@ -132,27 +138,64 @@ final class AudioProcessTapEngine {
         }
     }
 
-    /// Применить набор уровней. Дебаунсится, чтобы движение слайдера
-    /// не пересобирало агрегаты десятки раз в секунду.
+    /// Применить набор уровней.
+    ///
+    /// Гейны — всегда немедленно. Пересборка агрегатов дебаунсится, но
+    /// НЕСИММЕТРИЧНО: появление таппа применяется сразу, исчезновение — с
+    /// задержкой. Ждать появления нельзя — пока таппа нет, приложение играет
+    /// в полную громкость, и слайдер выглядит залипшим на те самые 150 мс.
+    /// А вот исчезновение стоит придержать: на обратном ходу слайдер легко
+    /// раз десять пересечёт отметку 100%, и каждое пересечение пересобирало
+    /// бы агрегат.
     func apply(levels: [Level]) {
-        pendingWorkItem?.cancel()
-
-        let work = DispatchWorkItem { [weak self] in
-            self?.applyUnsafe(levels: levels)
-        }
-        pendingWorkItem = work
-        queue.asyncAfter(deadline: .now() + 0.15, execute: work)
-
-        // Гейны обновляем немедленно, без дебаунса — слайдер должен реагировать сразу.
         queue.async { [weak self] in
-            self?.updateGainsOnlyUnsafe(levels: levels)
+            guard let self else { return }
+
+            self.updateGainsOnlyUnsafe(levels: levels)
+
+            self.pendingWorkItem?.cancel()
+            self.pendingWorkItem = nil
+
+            if self.needsImmediateApplyUnsafe(levels: levels) {
+                self.applyUnsafe(levels: levels)
+                return
+            }
+
+            self.lastLevels = levels
+            let work = DispatchWorkItem { [weak self] in
+                self?.applyUnsafe(levels: levels)
+            }
+            self.pendingWorkItem = work
+            self.queue.asyncAfter(deadline: .now() + 0.15, execute: work)
         }
     }
 
+    /// Есть ли изменение, которое нельзя откладывать: новый тапп или переезд
+    /// приложения на другое устройство. И то и другое — прямое действие
+    /// пользователя, результат которого он ждёт сейчас, а не через 150 мс.
+    private func needsImmediateApplyUnsafe(levels: [Level]) -> Bool {
+        let defaultUID = outputDeviceUID
+        let required = levels.filter { $0.requiresTap(default: defaultUID) }
+
+        if required.contains(where: { taps[$0.pid] == nil && !tapFailures.contains($0.pid) }) {
+            return true
+        }
+
+        for level in required {
+            guard let uid = level.resolvedOutput(default: defaultUID) else { continue }
+            if routes[uid]?.pids.contains(level.pid) != true { return true }
+        }
+        return false
+    }
+
     func shutdown() {
-        pendingWorkItem?.cancel()
+        // Всё, что касается pendingWorkItem, живёт на queue: трогать его
+        // с чужого потока — гонка, пусть и незаметная.
         queue.sync { [weak self] in
-            self?.teardownUnsafe()
+            guard let self else { return }
+            self.pendingWorkItem?.cancel()
+            self.pendingWorkItem = nil
+            self.teardownUnsafe()
         }
     }
 
@@ -224,11 +267,16 @@ final class AudioProcessTapEngine {
             AudioHardwareDestroyProcessTap(slot.tapID)
             taps.removeValue(forKey: pid)
         }
+        // Процесс, который больше не нужен, забываем и как неудачный: в
+        // следующий раз попытка должна быть честной.
+        tapFailures.formIntersection(requiredPIDs)
 
         for level in required where taps[level.pid] == nil {
             do {
                 taps[level.pid] = try makeTap(for: level)
+                tapFailures.remove(level.pid)
             } catch {
+                tapFailures.insert(level.pid)
                 AppLog.engine.error(
                     "Tap for pid \(level.pid) failed: \(error.localizedDescription, privacy: .public)"
                 )
@@ -463,5 +511,6 @@ final class AudioProcessTapEngine {
             AudioHardwareDestroyProcessTap(slot.tapID)
         }
         taps.removeAll()
+        tapFailures.removeAll()
     }
 }

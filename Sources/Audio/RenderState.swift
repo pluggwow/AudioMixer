@@ -73,10 +73,31 @@ final class RenderState {
 
     // MARK: - Запись (не-realtime сторона)
 
-    /// Полная замена карты гейнов. Вызывается при изменении набора таппов.
+    /// Сколько каналов записала не-realtime сторона в прошлый раз.
+    /// Трогает её только она, поэтому синхронизации не требует.
+    private var writerChannelCount = 0
+
+    /// Обновить гейны. Лок берётся, только если поменялась РАСКЛАДКА каналов.
+    ///
+    /// Движение слайдера меняет одни значения, и брать под них лок нельзя:
+    /// realtime-поток заходит через `trylock` и на неудачу отдаёт буфер
+    /// тишины. При шестидесяти обновлениях в секунду это давало слышимые
+    /// провалы — «звук прерывается на миллисекунду». Отдельное выровненное
+    /// 32-битное сохранение атомарно (на этом же держится `setMasterGain`),
+    /// так что порвать значение посередине нечем; худшее, что может
+    /// случиться, — один буфер со смесью старых и новых гейнов, а его
+    /// сгладит интерполяция.
     func updateChannelGains(_ newGains: [Float]) {
-        os_unfair_lock_lock(lock)
         let count = min(newGains.count, Self.maxChannels)
+
+        if count == writerChannelCount {
+            for index in 0..<count {
+                gains[index] = newGains[index]
+            }
+            return
+        }
+
+        os_unfair_lock_lock(lock)
         for index in 0..<count {
             gains[index] = newGains[index]
         }
@@ -85,6 +106,8 @@ final class RenderState {
         }
         activeChannels = count
         os_unfair_lock_unlock(lock)
+
+        writerChannelCount = count
     }
 
     /// Одиночное 32-битное выровненное сохранение — на arm64/x86_64 атомарно,

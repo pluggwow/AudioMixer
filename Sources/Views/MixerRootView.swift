@@ -77,11 +77,18 @@ struct MixerRootView: View {
             GeometryReader { proxy in
                 if let tip {
                     let point = proxy[tip.anchor]
+                    // Ширина окошка считается по тексту, и прижимаем мы именно
+                    // его края: ограничивать один центр мало — у длинного
+                    // названия половина окошка всё равно уезжала за край.
+                    let inset: CGFloat = 8
+                    let maxWidth = panelWidth - inset * 2
+                    let width = min(HoverTipBubble.width(of: tip.text), maxWidth)
+                    let x = min(max(point.x, width / 2 + inset),
+                                panelWidth - width / 2 - inset)
+
                     HoverTipBubble(text: tip.text)
-                        // Придерживаем у краёв: длинное название приложения
-                        // иначе наполовину уехало бы за пределы панели.
-                        .position(x: min(max(point.x, 60), panelWidth - 60),
-                                  y: point.y - 12)
+                        .frame(maxWidth: maxWidth)
+                        .position(x: x, y: point.y - 12)
                 }
             }
             .allowsHitTesting(false)

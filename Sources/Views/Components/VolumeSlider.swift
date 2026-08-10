@@ -183,11 +183,27 @@ struct HoverTipKey: PreferenceKey {
 struct HoverTipBubble: View {
     let text: String
 
+    static let fontSize: CGFloat = 10
+    private static let horizontalPadding: CGFloat = 5
+
+    /// Ширина окошка, посчитанная по тексту.
+    ///
+    /// Нужна, чтобы прижать подсказку к краю панели по-настоящему: ограничить
+    /// один только центр мало — у длинного названия половина окошка всё равно
+    /// уезжала за край и обрезалась.
+    static func width(of text: String) -> CGFloat {
+        let font = NSFont.systemFont(ofSize: fontSize, weight: .medium)
+        let text = (text as NSString).size(withAttributes: [.font: font]).width
+        return text.rounded(.up) + horizontalPadding * 2
+    }
+
     var body: some View {
         Text(text)
-            .font(.system(size: 10, weight: .medium).monospacedDigit())
+            .font(.system(size: Self.fontSize, weight: .medium).monospacedDigit())
             .foregroundStyle(.primary)
-            .padding(.horizontal, 5)
+            .lineLimit(2)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, Self.horizontalPadding)
             .padding(.vertical, 2)
             .background(
                 RoundedRectangle(cornerRadius: 5, style: .continuous)

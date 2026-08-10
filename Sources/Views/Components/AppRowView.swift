@@ -16,10 +16,6 @@ struct AppRowView: View {
     let sliderStyle: SliderStyleOption
     /// Для выбора устройства прямо в строке.
     var availableDevices: [AudioDeviceInfo] = []
-    /// Ширина колонки названия. Её считает список — одну на все строки, по
-    /// самому длинному имени, чтобы слайдеры стояли по одной вертикали.
-    var nameWidth: CGFloat = AppNameMetrics.maxColumnWidth
-
     /// Строку сейчас тащат мышью.
     var isDragged: Bool = false
     var canMoveUp: Bool = false
@@ -40,14 +36,14 @@ struct AppRowView: View {
     /// считает свой размер, а перетаскивание — шаг сетки.
     static let height: CGFloat = 38
 
-    private let iconSize: CGFloat = 22
-    private let muteSize: CGFloat = 18
-    private let outputSize: CGFloat = 18
-    private let spacing: CGFloat = 7
+    private let iconSize = RowMetrics.icon
+    private let muteSize = RowMetrics.button
+    private let outputSize = RowMetrics.button
+    private let spacing = RowMetrics.spacing
 
     /// Имя не поместилось в отведённую колонку и обрезано многоточием.
     private var isNameTruncated: Bool {
-        AppNameMetrics.width(of: app, includingPin: app.isPinned) > nameWidth
+        RowMetrics.width(of: app, includingPin: app.isPinned) > RowMetrics.nameWidth
     }
 
     /// Устройство, в которое уведено приложение. nil — звучит как все.
@@ -67,7 +63,7 @@ struct AppRowView: View {
 
             HStack(spacing: 3) {
                 Text(app.name)
-                    .font(AppNameMetrics.swiftUIFont)
+                    .font(RowMetrics.swiftUIFont)
                     .foregroundStyle(app.isSilent ? .secondary : .primary)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -80,7 +76,7 @@ struct AppRowView: View {
 
                 Spacer(minLength: 0)
             }
-            .frame(width: nameWidth, alignment: .leading)
+            .frame(width: RowMetrics.nameWidth, alignment: .leading)
             .contentShape(Rectangle())
             .onHover { hovering in
                 isNameHovering = hovering
@@ -108,7 +104,7 @@ struct AppRowView: View {
                 accentTint: (app.isSilent || !app.isRunning) ? .secondary : nil,
                 hoverLabel: showPercentage ? (app.isMuted ? "Выкл." : app.percentText) : nil
             )
-            .frame(maxWidth: .infinity)
+            .frame(width: RowMetrics.sliderWidth)
 
             Button(action: onToggleMute) {
                 Image(systemName: app.speakerSymbol)
@@ -217,36 +213,45 @@ struct AppRowView: View {
 }
 
 
-// MARK: - Размеры колонки названий
+// MARK: - Размеры строки
 
-/// Ширина колонки названий считается по тексту, а не берётся с потолка:
-/// при коротких именах колонка ужимается и слайдер вырастает влево, а при
-/// длинных упирается в потолок — иначе слайдеру не осталось бы места.
-enum AppNameMetrics {
+/// Размеры строки в одном месте: по ним же панель считает свою ширину, а
+/// строка — помещается ли название.
+enum RowMetrics {
+
+    /// Ширина панели живёт здесь, а не в MixerRootView: строке она нужна,
+    /// чтобы знать, сколько остаётся названию.
+    static let panelWidth: CGFloat = 360
+    static let panelPadding: CGFloat = 14
+    static let rowPadding: CGFloat = 6
+
+    static let icon: CGFloat = 22
+    static let button: CGFloat = 18
+    static let spacing: CGFloat = 7
+
+    /// Слайдер фиксированной длины. Считать его по остатку заманчиво —
+    /// при коротких названиях он был бы длиннее, — но тогда он прыгает
+    /// вбок каждый раз, когда в списке появляется приложение с длинным
+    /// именем: колонка названий общая на весь список.
+    static let sliderWidth: CGFloat = 165
+
+    /// Названию достаётся остаток строки.
+    static var nameWidth: CGFloat {
+        panelWidth - panelPadding * 2 - rowPadding * 2
+            - icon - button * 2 - spacing * 4 - sliderWidth
+    }
+
+    // MARK: Название
 
     static let fontSize: CGFloat = 12
     static var swiftUIFont: Font { .system(size: fontSize) }
 
-    /// Меньше уже нельзя: в колонке должна помещаться хотя бы скрепка.
-    static let minColumnWidth: CGFloat = 44
-    /// Больше — незачем: остаток строки нужен слайдеру.
-    static let maxColumnWidth: CGFloat = 104
-
     private static let pinAllowance: CGFloat = 12
-    /// Небольшой запас справа: без него самое длинное имя упиралось бы
-    /// в слайдер вплотную.
-    private static let trailingGap: CGFloat = 6
-
     private static let font = NSFont.systemFont(ofSize: fontSize)
 
+    /// Ширина названия на экране — с запасом под скрепку у закреплённых.
     static func width(of app: AudioAppState, includingPin pin: Bool) -> CGFloat {
         let text = (app.name as NSString).size(withAttributes: [.font: font]).width
         return text.rounded(.up) + (pin ? pinAllowance : 0)
-    }
-
-    /// Одна ширина на весь список — по самому длинному имени.
-    static func columnWidth(for apps: [AudioAppState]) -> CGFloat {
-        let widest = apps.map { width(of: $0, includingPin: $0.isPinned) }.max() ?? 0
-        return min(max(widest + trailingGap, minColumnWidth), maxColumnWidth)
     }
 }

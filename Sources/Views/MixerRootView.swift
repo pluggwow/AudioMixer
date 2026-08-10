@@ -20,11 +20,10 @@ struct MixerRootView: View {
 
     @Environment(\.openSettings) private var openSettings
 
-    /// Чуть шире системной панели «Звук»: там одна строка устройства, а у нас
-    /// в строке ещё слайдер, проценты и mute — на 340 pt название приложения
-    /// начинало резаться на середине.
-    private let panelWidth: CGFloat = 360
-    private let sidePadding: CGFloat = 14
+    /// Ширина и отступы живут в RowMetrics: строке они нужны, чтобы знать,
+    /// сколько остаётся названию при фиксированном слайдере.
+    private let panelWidth = RowMetrics.panelWidth
+    private let sidePadding = RowMetrics.panelPadding
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {

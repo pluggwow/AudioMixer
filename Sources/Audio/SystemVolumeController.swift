@@ -67,17 +67,16 @@ final class SystemVolumeController: ObservableObject {
 
         self.deviceID = deviceID
 
-        let channels = stereoChannels(of: deviceID)
-        volumeWriteProperties = properties(kAudioDevicePropertyVolumeScalar, channels: channels, settableOnly: true)
-        muteWriteProperties = properties(kAudioDevicePropertyMute, channels: channels, settableOnly: true)
+        volumeWriteProperties = deviceID.outputVolumeProperties(settableOnly: true)
+        muteWriteProperties = deviceID.outputMuteProperties(settableOnly: true)
 
         // Показать уровень можно и у того, чем управлять нельзя, — цифра
         // всё равно полезна.
         volumeReadProperties = volumeWriteProperties.isEmpty
-            ? properties(kAudioDevicePropertyVolumeScalar, channels: channels, settableOnly: false)
+            ? deviceID.outputVolumeProperties(settableOnly: false)
             : volumeWriteProperties
         muteReadProperties = muteWriteProperties.isEmpty
-            ? properties(kAudioDevicePropertyMute, channels: channels, settableOnly: false)
+            ? deviceID.outputMuteProperties(settableOnly: false)
             : muteWriteProperties
 
         isControllable = !volumeWriteProperties.isEmpty
@@ -111,42 +110,6 @@ final class SystemVolumeController: ObservableObject {
         return properties
             .map { "\($0.scope.fourCCDescription)/элемент \($0.element)" }
             .joined(separator: ", ")
-    }
-
-    /// Где у устройства искать свойство. Порядок перебора и есть вся логика:
-    /// сначала мастер-элемент — если управлять можно им, каналы трогать не
-    /// нужно, система сама разведёт их по балансу; если мастера нет — каналы
-    /// стереопары; и всё то же самое в глобальной области, если в выходной
-    /// не нашлось ничего.
-    private func properties(_ selector: AudioObjectPropertySelector,
-                            channels: [AudioObjectPropertyElement],
-                            settableOnly: Bool) -> [AudioProperty] {
-        func usable(_ property: AudioProperty) -> Bool {
-            guard deviceID.hasProperty(property) else { return false }
-            return settableOnly ? deviceID.isSettable(property) : true
-        }
-
-        for scope in [kAudioObjectPropertyScopeOutput, kAudioObjectPropertyScopeGlobal] {
-            let main = AudioProperty(selector, scope: scope, element: kAudioObjectPropertyElementMain)
-            if usable(main) { return [main] }
-
-            let perChannel = channels
-                .map { AudioProperty(selector, scope: scope, element: $0) }
-                .filter(usable)
-            if !perChannel.isEmpty { return perChannel }
-        }
-        return []
-    }
-
-    /// Какие каналы устройство считает стереопарой. Обычно 1 и 2, но
-    /// спрашивать правильнее: у многоканальных устройств пара может быть иной.
-    private func stereoChannels(of deviceID: AudioObjectID) -> [AudioObjectPropertyElement] {
-        let property = AudioProperty(kAudioDevicePropertyPreferredChannelsForStereo,
-                                     scope: kAudioObjectPropertyScopeOutput)
-        guard let pair: (UInt32, UInt32) = try? deviceID.read(property, defaultValue: (UInt32(1), UInt32(2))) else {
-            return [1, 2]
-        }
-        return [pair.0, pair.1]
     }
 
     func syncFromDevice() {

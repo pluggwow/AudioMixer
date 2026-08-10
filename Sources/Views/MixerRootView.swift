@@ -141,6 +141,7 @@ struct MixerRootView: View {
                             showIcons: settings.showAppIcons,
                             showPercentage: settings.showVolumePercentage,
                             sliderStyle: settings.sliderStyle,
+                            availableDevices: viewModel.availableDevices,
                             viewportHeight: scrollHeight,
                             scrollProxy: scrollProxy,
                             onVolumeChange: { bundleID, volume in
@@ -148,6 +149,9 @@ struct MixerRootView: View {
                             },
                             onToggleMute: { viewModel.toggleMute(for: $0) },
                             onTogglePin: { viewModel.togglePin(for: $0) },
+                            onSelectOutput: { bundleID, uid in
+                                viewModel.setOutputDevice(uid, for: bundleID)
+                            },
                             onMove: { source, destination in
                                 viewModel.moveApp(from: source, to: destination)
                             },

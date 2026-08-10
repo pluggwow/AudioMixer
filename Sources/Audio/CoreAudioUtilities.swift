@@ -186,6 +186,96 @@ extension AudioObjectID {
     }
 }
 
+// MARK: - Громкость устройства вывода
+
+extension AudioObjectID {
+
+    /// Устройство по его UID. Нужно там, где на руках только UID: движок
+    /// хранит маршруты именно по нему, а не по ID, который живёт лишь до
+    /// переподключения устройства.
+    static func device(uid: String) -> AudioObjectID? {
+        var address = AudioProperty(kAudioHardwarePropertyTranslateUIDToDevice).address
+        var cfUID = uid as CFString
+        var deviceID = AudioObjectID.unknown
+        var size = UInt32(MemoryLayout<AudioObjectID>.size)
+
+        let status = withUnsafeMutablePointer(to: &cfUID) { uidPointer in
+            AudioObjectGetPropertyData(
+                .system, &address,
+                UInt32(MemoryLayout<CFString>.size), uidPointer,
+                &size, &deviceID
+            )
+        }
+        guard status == noErr, deviceID.isValid else { return nil }
+        return deviceID
+    }
+
+    /// Где у устройства искать громкость и mute.
+    ///
+    /// Порядок перебора и есть вся логика: мастер-элемент выходной области —
+    /// если управлять можно им, каналы трогать не нужно; если мастера нет —
+    /// каналы стереопары; и всё то же в глобальной области. Одного мастера
+    /// мало: у Bluetooth-гарнитур его обычно нет вовсе, и устройство
+    /// выглядело бы нерегулируемым.
+    func outputVolumeProperties(settableOnly: Bool) -> [AudioProperty] {
+        properties(kAudioDevicePropertyVolumeScalar, settableOnly: settableOnly)
+    }
+
+    func outputMuteProperties(settableOnly: Bool) -> [AudioProperty] {
+        properties(kAudioDevicePropertyMute, settableOnly: settableOnly)
+    }
+
+    private func properties(_ selector: AudioObjectPropertySelector,
+                            settableOnly: Bool) -> [AudioProperty] {
+        func usable(_ property: AudioProperty) -> Bool {
+            guard hasProperty(property) else { return false }
+            return settableOnly ? isSettable(property) : true
+        }
+
+        let channels = preferredStereoChannels
+        for scope in [kAudioObjectPropertyScopeOutput, kAudioObjectPropertyScopeGlobal] {
+            let main = AudioProperty(selector, scope: scope, element: kAudioObjectPropertyElementMain)
+            if usable(main) { return [main] }
+
+            let perChannel = channels
+                .map { AudioProperty(selector, scope: scope, element: $0) }
+                .filter(usable)
+            if !perChannel.isEmpty { return perChannel }
+        }
+        return []
+    }
+
+    /// Какие каналы устройство считает стереопарой. Обычно 1 и 2, но
+    /// спрашивать правильнее: у многоканальных устройств пара может быть иной.
+    var preferredStereoChannels: [AudioObjectPropertyElement] {
+        let property = AudioProperty(kAudioDevicePropertyPreferredChannelsForStereo,
+                                     scope: kAudioObjectPropertyScopeOutput)
+        guard let pair: (UInt32, UInt32) = try? read(property, defaultValue: (UInt32(1), UInt32(2))) else {
+            return [1, 2]
+        }
+        return [pair.0, pair.1]
+    }
+
+    /// Текущая громкость 0...1, усреднённая по каналам. nil — читать негде.
+    func readOutputVolume() -> Float? {
+        let values = outputVolumeProperties(settableOnly: false).compactMap { property -> Float? in
+            try? read(property, defaultValue: Float32(0))
+        }
+        guard !values.isEmpty else { return nil }
+        // Swift.max/Swift.min: в расширении AudioObjectID безымянные min и max —
+        // это статические свойства UInt32, а не функции.
+        return Swift.max(0, Swift.min(values.reduce(0, +) / Float(values.count), 1))
+    }
+
+    func readOutputMute() -> Bool? {
+        let values = outputMuteProperties(settableOnly: false).compactMap { property -> UInt32? in
+            try? read(property, defaultValue: UInt32(0))
+        }
+        guard !values.isEmpty else { return nil }
+        return values.contains { $0 != 0 }
+    }
+}
+
 // MARK: - Наблюдение за свойствами (вместо polling)
 
 /// RAII-обёртка над AudioObjectAddPropertyListenerBlock.

@@ -72,6 +72,18 @@ final class VolumeStore: ObservableObject {
         scheduleSave()
     }
 
+    /// Своё устройство вывода для приложения. `nil` — вернуться к системному.
+    /// Как и закрепление, не зависит от «запоминать громкости»: это не
+    /// громкость, а маршрут.
+    func setOutputDevice(_ uid: String?, for bundleID: String, displayName: String) {
+        var entry = storage[bundleID] ?? StoredAppSettings()
+        entry.outputDeviceUID = uid
+        entry.displayName = displayName.isEmpty ? entry.displayName : displayName
+        entry.lastSeen = .now
+        storage[bundleID] = entry
+        scheduleSave()
+    }
+
     /// Пользователь передвинул строку сам — прежнее место больше не актуально,
     /// открепление не должно отменять его выбор.
     func clearPinAnchor(for bundleID: String) {

@@ -18,15 +18,30 @@ import SwiftUI
 /// которые сразу выдают стороннее приложение.
 struct OutputDeviceMenu<Content: View>: View {
 
-    let device: AudioDeviceInfo?
+    /// UID выбранного устройства. nil — «как в системе».
+    let selectedUID: String?
     let availableDevices: [AudioDeviceInfo]
-    let onSelect: (AudioDeviceInfo) -> Void
+
+    /// Заголовок пункта «как в системе». nil — пункта нет: у общего выбора
+    /// устройства по умолчанию быть не может, там выбирают само умолчание.
+    var systemDefaultTitle: String?
+
+    /// nil означает возврат к системному устройству.
+    let onSelect: (String?) -> Void
     var fixedSize: Bool = false
     @ViewBuilder let content: () -> Content
+
+    /// Пустая строка вместо nil: тег пункта меню должен быть непустым типом,
+    /// а Optional<String> в Picker ведёт себя капризно.
+    private static var systemTag: String { "" }
 
     var body: some View {
         Menu {
             Picker("", selection: selection) {
+                if let systemDefaultTitle {
+                    Label(systemDefaultTitle, systemImage: "speaker.wave.2")
+                        .tag(Self.systemTag)
+                }
                 ForEach(availableDevices) { candidate in
                     Label(candidate.name, systemImage: candidate.symbolName)
                         .tag(candidate.uid)
@@ -45,11 +60,11 @@ struct OutputDeviceMenu<Content: View>: View {
 
     private var selection: Binding<String> {
         Binding(
-            get: { device?.uid ?? "" },
-            set: { uid in
-                guard let picked = availableDevices.first(where: { $0.uid == uid }),
-                      picked.uid != device?.uid else { return }
-                onSelect(picked)
+            get: { selectedUID ?? Self.systemTag },
+            set: { tag in
+                let uid = tag == Self.systemTag ? nil : tag
+                guard uid != selectedUID else { return }
+                onSelect(uid)
             }
         )
     }

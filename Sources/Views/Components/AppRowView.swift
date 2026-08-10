@@ -13,6 +13,8 @@ struct AppRowView: View {
     let showIcon: Bool
     let showPercentage: Bool
     let sliderStyle: SliderStyleOption
+    /// Для выбора устройства прямо в строке.
+    var availableDevices: [AudioDeviceInfo] = []
 
     /// Строку сейчас тащат мышью.
     var isDragged: Bool = false
@@ -22,6 +24,8 @@ struct AppRowView: View {
     let onVolumeChange: (Float) -> Void
     let onToggleMute: () -> Void
     var onTogglePin: () -> Void = {}
+    /// nil — вернуть приложение на системное устройство.
+    var onSelectOutput: (String?) -> Void = { _ in }
     /// Сдвиг на позицию: -1 вверх, +1 вниз.
     var onMove: (Int) -> Void = { _ in }
 
@@ -38,7 +42,16 @@ struct AppRowView: View {
     private let sliderWidth: CGFloat = 104
     private let percentWidth: CGFloat = 30
     private let muteSize: CGFloat = 16
+    private let outputSize: CGFloat = 16
     private let spacing: CGFloat = 6
+
+    /// Устройство, в которое уведено приложение. nil — звучит как все.
+    private var routedDevice: AudioDeviceInfo? {
+        guard let uid = app.outputDeviceUID else { return nil }
+        return availableDevices.first { $0.uid == uid }
+    }
+
+    private var isRouted: Bool { app.outputDeviceUID != nil }
 
     var body: some View {
         HStack(spacing: spacing) {
@@ -94,6 +107,8 @@ struct AppRowView: View {
                     .opacity(isHovering ? 1 : 0)
             }
 
+            outputButton
+
             Button(action: onToggleMute) {
                 Image(systemName: app.speakerSymbol)
                     .font(.system(size: 10))
@@ -147,6 +162,30 @@ struct AppRowView: View {
             Button("Переместить ниже") { onMove(1) }
                 .disabled(!canMoveDown)
         }
+    }
+
+    /// Кнопка выбора устройства. В покое её не видно — она нужна редко, а
+    /// строка должна оставаться чистой. Но у приложения, уведённого в другое
+    /// устройство, значок горит всегда: иначе о таком маршруте можно забыть
+    /// и потом долго искать, почему звук идёт не туда.
+    private var outputButton: some View {
+        OutputDeviceMenu(
+            selectedUID: app.outputDeviceUID,
+            availableDevices: availableDevices,
+            systemDefaultTitle: "Как в системе",
+            onSelect: onSelectOutput,
+            fixedSize: true
+        ) {
+            // Значок устройства, если оно известно; если приложение уведено на
+            // устройство, которого сейчас нет в системе, — общий значок вывода.
+            Image(systemName: routedDevice?.symbolName ?? "airplayaudio")
+                .font(.system(size: 10))
+                .foregroundStyle(isRouted ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.secondary))
+                .frame(width: outputSize, height: outputSize)
+                .contentShape(Rectangle())
+        }
+        .opacity(isRouted || isHovering ? 1 : 0)
+        .help(routedDevice.map { "Выход: \($0.name)" } ?? "Выбрать устройство вывода")
     }
 
     private var backgroundOpacity: Double {

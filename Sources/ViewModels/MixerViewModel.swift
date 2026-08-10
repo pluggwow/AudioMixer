@@ -110,14 +110,10 @@ final class MixerViewModel: ObservableObject {
         deviceManager.start()
         processMonitor.start()
 
-        // Мастер-громкость влияет на итоговый gain нашего рендера:
-        // без этого приложение с tap-ом игнорировало бы системный регулятор.
-        systemVolume.$volume
-            .combineLatest(systemVolume.$isMuted)
-            .sink { [weak self] volume, muted in
-                self?.tapEngine?.setMasterGain(muted ? 0 : volume)
-            }
-            .store(in: &cancellables)
+        // Мастер-громкость движку не передаём: наш рендер идёт мимо
+        // регулятора устройства, и применять громкость приходится самим —
+        // но у каждого маршрута она своя, поэтому движок читает её сам,
+        // у того устройства, в которое этот маршрут звучит.
     }
 
     func shutdown() {
@@ -233,6 +229,27 @@ final class MixerViewModel: ObservableObject {
             hasCustomOrder = orderStore.isCustom
             rebuildApps(from: lastProcesses)
         }
+    }
+
+    // MARK: - Устройство вывода приложения
+
+    /// Увести приложение в другое устройство. `nil` — вернуть к системному.
+    ///
+    /// Маршрутизация без перехвата невозможна, поэтому приложение с чужим
+    /// устройством таппится даже на 100% громкости — движок это учитывает сам.
+    func setOutputDevice(_ uid: String?, for bundleID: String) {
+        guard let index = apps.firstIndex(where: { $0.bundleID == bundleID }) else { return }
+        guard apps[index].outputDeviceUID != uid else { return }
+
+        apps[index].outputDeviceUID = uid
+        volumeStore.setOutputDevice(uid, for: bundleID, displayName: apps[index].name)
+        pushLevelsToEngine()
+    }
+
+    /// Устройство приложения как объект — для галочки в меню и значка в строке.
+    func outputDevice(for app: AudioAppState) -> AudioDeviceInfo? {
+        guard let uid = app.outputDeviceUID else { return nil }
+        return availableDevices.first { $0.uid == uid }
     }
 
     // MARK: - Порядок строк
@@ -378,7 +395,8 @@ final class MixerViewModel: ObservableObject {
                     isMuted: muted,
                     isPlaying: process.isRunningOutput,
                     isPinned: volumeStore.settings(for: process.bundleID)?.isPinned ?? false,
-                    isRunning: true
+                    isRunning: true,
+                    outputDeviceUID: volumeStore.settings(for: process.bundleID)?.outputDeviceUID
                 )
             )
         }
@@ -412,7 +430,8 @@ final class MixerViewModel: ObservableObject {
                     isMuted: entry.settings.isMuted,
                     isPlaying: false,
                     isPinned: true,
-                    isRunning: false
+                    isRunning: false,
+                    outputDeviceUID: entry.settings.outputDeviceUID
                 )
             }
             // Порядок словаря не определён, а список не должен прыгать между
@@ -434,7 +453,12 @@ final class MixerViewModel: ObservableObject {
         // Только запущенные: у закреплённой строки закрытого приложения pid
         // невалидный, и движок безуспешно пытался бы навесить на него tap.
         let levels = apps.filter(\.isRunning).map {
-            AudioProcessTapEngine.Level(pid: $0.pid, volume: $0.volume, isMuted: $0.isMuted)
+            AudioProcessTapEngine.Level(
+                pid: $0.pid,
+                volume: $0.volume,
+                isMuted: $0.isMuted,
+                outputUID: $0.outputDeviceUID
+            )
         }
         engine.apply(levels: levels)
     }
@@ -447,7 +471,6 @@ final class MixerViewModel: ObservableObject {
         // Наушники отключились / устройство сменилось -> агрегат пересобирается
         // под новое устройство. Иначе IOProc продолжил бы писать в исчезнувший выход.
         tapEngine?.setOutputDevice(uid: device?.uid)
-        tapEngine?.setMasterGain(systemVolume.isMuted ? 0 : systemVolume.volume)
     }
 
     func selectOutputDevice(_ device: AudioDeviceInfo) {

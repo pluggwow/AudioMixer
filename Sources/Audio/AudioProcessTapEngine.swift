@@ -2,19 +2,29 @@
 //  AudioProcessTapEngine.swift
 //  AudioMixer
 //
-//  Сердце проекта. Реализует per-app volume через официальный Core Audio API:
+//  Сердце проекта. Реализует per-app volume и per-app вывод через официальный
+//  Core Audio API:
 //
-//    1. На каждое приложение, чья громкость != 100% (или замьючено), создаётся
-//       CATapDescription с muteBehavior = .mutedWhenTapped. Система при этом
-//       ГЛУШИТ оригинальный выход процесса — двойного звука не возникает.
-//    2. Все таппы подключаются как входы к одному приватному агрегатному устройству,
-//       main sub-device которого — реальное устройство вывода пользователя.
-//    3. Один IOProc читает входы, умножает на gain и пишет в выход.
-//       Общий clock domain => нет ресемплинга, нет дрейфа, латентность = 1 буфер.
+//    1. На приложение, которому нужен перехват, создаётся CATapDescription с
+//       muteBehavior = .mutedWhenTapped. Система при этом ГЛУШИТ оригинальный
+//       выход процесса — двойного звука не возникает.
+//    2. Таппы подключаются входами к приватному агрегатному устройству,
+//       main sub-device которого — устройство вывода. Агрегат СВОЙ на каждое
+//       устройство: именно это и позволяет увести приложение в наушники, пока
+//       остальные играют в динамики.
+//    3. В каждом агрегате свой IOProc: читает входы, умножает на gain, пишет
+//       в выход. Общий clock domain => нет ресемплинга и дрейфа, латентность
+//       = 1 буфер.
 //
-//  Приложения на 100% без mute НЕ таппятся вообще — они играют мимо нас нативно.
-//  Если таких приложений, которым нужен tap, нет — движок полностью выключается
-//  (агрегат уничтожается), и потребление CPU падает до нуля.
+//  Перехват нужен приложению, если у него меняется громкость (не 100% или
+//  mute) ЛИБО если оно выведено не туда, куда система выводит по умолчанию:
+//  маршрутизации без перехвата не существует. Остальные играют мимо нас
+//  нативно, и если таких, кому нужен tap, нет — движок выключается целиком,
+//  потребление CPU падает до нуля.
+//
+//  Громкость устройства движок читает сам, отдельно для каждого маршрута:
+//  наш рендер идёт мимо регулятора устройства, поэтому иначе приложение,
+//  уведённое в наушники, играло бы там на полной шкале.
 //
 
 import Foundation
@@ -39,10 +49,23 @@ final class AudioProcessTapEngine {
         var pid: pid_t
         var volume: Float   // 0...1
         var isMuted: Bool
+        /// UID устройства вывода. nil — то, что выбрано в системе.
+        var outputUID: String?
 
-        /// Итоговый gain. 1.0 означает «tap не нужен».
         var effectiveGain: Float { isMuted ? 0 : max(0, min(volume, 1)) }
-        var requiresTap: Bool { isMuted || volume < 0.999 }
+
+        /// Куда это приложение в итоге звучит.
+        func resolvedOutput(default defaultOutput: String?) -> String? {
+            outputUID ?? defaultOutput
+        }
+
+        /// Перехват нужен либо чтобы менять громкость, либо чтобы увести звук
+        /// на другое устройство.
+        func requiresTap(default defaultOutput: String?) -> Bool {
+            if isMuted || volume < 0.999 { return true }
+            guard let outputUID else { return false }
+            return outputUID != defaultOutput
+        }
     }
 
     private struct TapSlot {
@@ -53,17 +76,31 @@ final class AudioProcessTapEngine {
         var gain: Float
     }
 
+    /// Один маршрут = одно устройство вывода со своим агрегатом и IOProc.
+    private final class Route {
+        let outputUID: String
+        /// Порядок важен: он же задаёт порядок каналов в агрегате.
+        var pids: [pid_t] = []
+        var aggregateID: AudioObjectID = .unknown
+        var ioProcID: AudioDeviceIOProcID?
+        var isRunning = false
+        let renderState = RenderState()
+        var volumeObservers: [AudioPropertyObserver] = []
+
+        init(outputUID: String) { self.outputUID = outputUID }
+    }
+
     // MARK: - Состояние
 
     private let queue = DispatchQueue(label: "com.example.AudioMixer.engine", qos: .userInitiated)
-    private let renderState = RenderState()
 
-    private var aggregateID: AudioObjectID = .unknown
-    private var ioProcID: AudioDeviceIOProcID?
-    private var isRunning = false
+    /// Живые таппы по pid. Тапп переживает пересборку агрегатов и переезд
+    /// приложения с одного устройства на другое — пересоздавать его незачем.
+    private var taps: [pid_t: TapSlot] = [:]
+    private var routes: [String: Route] = [:]
 
-    private var slots: [TapSlot] = []
     private var outputDeviceUID: String?
+    private var lastLevels: [Level] = []
     private var pendingWorkItem: DispatchWorkItem?
 
     /// Вызывается на main.
@@ -84,29 +121,22 @@ final class AudioProcessTapEngine {
 
     // MARK: - Публичный API
 
-    /// Задать/сменить устройство вывода. Полная пересборка агрегата.
+    /// Сменить устройство по умолчанию. Приложения без своего выбора переезжают
+    /// вместе с ним, приложения с явным выбором остаются на своём устройстве.
     func setOutputDevice(uid: String?) {
         queue.async { [weak self] in
-            guard let self else { return }
-            guard self.outputDeviceUID != uid else { return }
-            AppLog.engine.info("Output device changed to \(uid ?? "nil", privacy: .public)")
+            guard let self, self.outputDeviceUID != uid else { return }
+            AppLog.engine.info("Default output changed to \(uid ?? "nil", privacy: .public)")
             self.outputDeviceUID = uid
-            let current = self.slots
-            self.teardownUnsafe()
-            self.slots = []
-            self.applyUnsafe(levels: current.map {
-                Level(pid: $0.pid, volume: $0.gain, isMuted: $0.gain == 0)
-            })
+            self.applyUnsafe(levels: self.lastLevels)
         }
     }
 
     /// Применить набор уровней. Дебаунсится, чтобы движение слайдера
-    /// не пересобирало tap-list десятки раз в секунду.
+    /// не пересобирало агрегаты десятки раз в секунду.
     func apply(levels: [Level]) {
         pendingWorkItem?.cancel()
 
-        // Быстрый путь: если набор нужных таппов не изменился, меняем только gain.
-        // Это не требует пересборки агрегата и происходит мгновенно.
         let work = DispatchWorkItem { [weak self] in
             self?.applyUnsafe(levels: levels)
         }
@@ -117,10 +147,6 @@ final class AudioProcessTapEngine {
         queue.async { [weak self] in
             self?.updateGainsOnlyUnsafe(levels: levels)
         }
-    }
-
-    func setMasterGain(_ gain: Float) {
-        renderState.setMasterGain(gain)
     }
 
     func shutdown() {
@@ -134,76 +160,84 @@ final class AudioProcessTapEngine {
 
     private func updateGainsOnlyUnsafe(levels: [Level]) {
         var changed = false
-        for index in slots.indices {
-            let pid = slots[index].pid
-            guard let level = levels.first(where: { $0.pid == pid }) else { continue }
-            if slots[index].gain != level.effectiveGain {
-                slots[index].gain = level.effectiveGain
-                changed = true
-            }
+        for level in levels {
+            guard var slot = taps[level.pid], slot.gain != level.effectiveGain else { continue }
+            slot.gain = level.effectiveGain
+            taps[level.pid] = slot
+            changed = true
         }
-        if changed { pushGainMapUnsafe() }
+        guard changed else { return }
+        for route in routes.values { pushGainMapUnsafe(route) }
     }
 
     private func applyUnsafe(levels: [Level]) {
-        let required = levels.filter { $0.requiresTap }
-        let requiredPIDs = Set(required.map(\.pid))
-        let currentPIDs = Set(slots.map(\.pid))
+        lastLevels = levels
 
-        guard requiredPIDs != currentPIDs || (required.isEmpty && isRunning) else {
-            updateGainsOnlyUnsafe(levels: levels)
-            return
-        }
+        let defaultUID = outputDeviceUID
+        let required = levels.filter { $0.requiresTap(default: defaultUID) }
 
-        // Ничего таппить не нужно — гасим движок целиком.
-        guard !required.isEmpty else {
-            AppLog.engine.info("No taps required, shutting engine down")
-            teardownUnsafe()
-            state = .idle
-            return
+        // Кого куда вести. Порядок внутри маршрута — порядок уровней.
+        var wanted: [String: [pid_t]] = [:]
+        for level in required {
+            guard let uid = level.resolvedOutput(default: defaultUID) else { continue }
+            wanted[uid, default: []].append(level.pid)
         }
 
         do {
-            // Удаляем лишние таппы.
-            for slot in slots where !requiredPIDs.contains(slot.pid) {
-                AudioHardwareDestroyProcessTap(slot.tapID)
-            }
-            slots.removeAll { !requiredPIDs.contains($0.pid) }
+            try syncTapsUnsafe(required: required, wanted: &wanted)
 
-            // Создаём недостающие.
-            for level in required where !currentPIDs.contains(level.pid) {
-                do {
-                    let slot = try makeTap(for: level)
-                    slots.append(slot)
-                } catch {
-                    // Один упавший процесс не должен ронять весь микшер.
-                    AppLog.engine.error("Tap for pid \(level.pid) failed: \(error.localizedDescription, privacy: .public)")
-                }
+            // Маршруты, которым больше некого вести.
+            for (uid, route) in routes where wanted[uid] == nil {
+                teardownRouteUnsafe(route)
+                routes.removeValue(forKey: uid)
             }
 
-            guard !slots.isEmpty else {
-                teardownUnsafe()
-                state = .idle
-                return
+            for (uid, pids) in wanted {
+                let route = routes[uid] ?? Route(outputUID: uid)
+                routes[uid] = route
+
+                // Сравнение МНОЖЕСТВАМИ: перестановка приложений в списке не
+                // меняет состав маршрута, и пересобирать агрегат из-за неё
+                // (то есть рвать звук) незачем.
+                guard Set(route.pids) != Set(pids) || !route.isRunning else { continue }
+                route.pids = pids
+                try rebuildRouteUnsafe(route)
             }
 
-            // Актуализируем гейны.
-            for index in slots.indices {
-                if let level = levels.first(where: { $0.pid == slots[index].pid }) {
-                    slots[index].gain = level.effectiveGain
-                }
-            }
-
-            try rebuildAggregateUnsafe()
-            pushGainMapUnsafe()
-            try startIfNeededUnsafe()
-
-            state = .running(tapCount: slots.count)
+            updateGainsOnlyUnsafe(levels: levels)
+            state = taps.isEmpty ? .idle : .running(tapCount: taps.count)
 
         } catch {
             AppLog.engine.error("Engine apply failed: \(error.localizedDescription, privacy: .public)")
             teardownUnsafe()
             state = .failed(error.localizedDescription)
+        }
+    }
+
+    /// Привести набор таппов к нужному: лишние уничтожить, недостающие создать.
+    /// Приложение, для которого тапп создать не удалось, из маршрута выпадает —
+    /// один упавший процесс не должен ронять весь микшер.
+    private func syncTapsUnsafe(required: [Level], wanted: inout [String: [pid_t]]) throws {
+        let requiredPIDs = Set(required.map(\.pid))
+
+        for (pid, slot) in taps where !requiredPIDs.contains(pid) {
+            AudioHardwareDestroyProcessTap(slot.tapID)
+            taps.removeValue(forKey: pid)
+        }
+
+        for level in required where taps[level.pid] == nil {
+            do {
+                taps[level.pid] = try makeTap(for: level)
+            } catch {
+                AppLog.engine.error(
+                    "Tap for pid \(level.pid) failed: \(error.localizedDescription, privacy: .public)"
+                )
+            }
+        }
+
+        for (uid, pids) in wanted {
+            let alive = pids.filter { taps[$0] != nil }
+            if alive.isEmpty { wanted.removeValue(forKey: uid) } else { wanted[uid] = alive }
         }
     }
 
@@ -266,7 +300,7 @@ final class AudioProcessTapEngine {
 
     // MARK: - Агрегатное устройство
 
-    /// Агрегат ВСЕГДА пересоздаётся под текущий набор таппов.
+    /// Агрегат ВСЕГДА пересоздаётся под текущий набор таппов маршрута.
     ///
     /// Почему не обновлять tap-list на живом устройстве: запись свойства
     /// kAudioAggregateDevicePropertyTapList возвращает noErr, но фактически
@@ -274,28 +308,26 @@ final class AudioProcessTapEngine {
     /// и таппы никто не читает. На уже работающем агрегате такая запись
     /// вдобавок обнуляет вход, который до этого работал. Проверено стендом
     /// на macOS 26.5. Рабочий путь один: список таппов в словаре создания.
-    private func rebuildAggregateUnsafe() throws {
-        teardownDeviceUnsafe()
+    private func rebuildRouteUnsafe(_ route: Route) throws {
+        teardownDeviceUnsafe(route)
 
-        guard !slots.isEmpty else { return }
-        guard let outputUID = outputDeviceUID else {
-            throw CAError.objectNotFound("output device UID")
-        }
+        let tapList = route.pids.compactMap { taps[$0] }
+        guard !tapList.isEmpty else { return }
 
         let uid = "com.example.AudioMixer.aggregate.\(UUID().uuidString)"
         let description: [String: Any] = [
             kAudioAggregateDeviceNameKey: "AudioMixer",
             kAudioAggregateDeviceUIDKey: uid,
             // Реальное устройство задаёт clock. Всё считается в его домене.
-            kAudioAggregateDeviceMainSubDeviceKey: outputUID,
+            kAudioAggregateDeviceMainSubDeviceKey: route.outputUID,
             // Приватное — не появляется в списке устройств пользователя.
             kAudioAggregateDeviceIsPrivateKey: true,
             kAudioAggregateDeviceIsStackedKey: false,
             kAudioAggregateDeviceTapAutoStartKey: true,
             kAudioAggregateDeviceSubDeviceListKey: [
-                [kAudioSubDeviceUIDKey: outputUID]
+                [kAudioSubDeviceUIDKey: route.outputUID]
             ],
-            kAudioAggregateDeviceTapListKey: slots.map {
+            kAudioAggregateDeviceTapListKey: tapList.map {
                 [kAudioSubTapUIDKey: $0.uid] as [String: Any]
             }
         ]
@@ -307,71 +339,127 @@ final class AudioProcessTapEngine {
         )
         guard deviceID.isValid else { throw CAError.objectNotFound("aggregate device") }
 
-        aggregateID = deviceID
-        AppLog.engine.info("Created private aggregate device \(deviceID) with \(self.slots.count) tap(s)")
+        route.aggregateID = deviceID
+        AppLog.engine.info(
+            "Route \(route.outputUID, privacy: .public): aggregate \(deviceID) with \(tapList.count) tap(s)"
+        )
+
+        bindDeviceVolumeUnsafe(route)
+        pushGainMapUnsafe(route)
+        try startIfNeededUnsafe(route)
     }
 
     /// Раскладывает пер-апповые гейны в плоский массив «на каждый входной канал».
     /// Порядок каналов = порядок таппов в tap-list.
-    private func pushGainMapUnsafe() {
+    private func pushGainMapUnsafe(_ route: Route) {
         var channelGains: [Float] = []
-        channelGains.reserveCapacity(slots.count * 2)
-        for slot in slots {
+        channelGains.reserveCapacity(route.pids.count * 2)
+        for pid in route.pids {
+            guard let slot = taps[pid] else { continue }
             for _ in 0..<max(slot.channelCount, 1) {
                 channelGains.append(slot.gain)
             }
         }
-        renderState.updateChannelGains(channelGains)
+        route.renderState.updateChannelGains(channelGains)
+    }
+
+    // MARK: - Громкость устройства маршрута
+
+    /// Наш рендер идёт мимо регулятора громкости устройства, поэтому громкость
+    /// приходится применять самим. У каждого маршрута она своя: приложение,
+    /// уведённое в наушники, обязано слушаться регулятора наушников, а не
+    /// того устройства, что выбрано в системе.
+    private func bindDeviceVolumeUnsafe(_ route: Route) {
+        route.volumeObservers = []
+
+        guard let deviceID = AudioObjectID.device(uid: route.outputUID) else {
+            route.renderState.setMasterGain(1)
+            return
+        }
+
+        let properties = Set(
+            deviceID.outputVolumeProperties(settableOnly: false)
+                + deviceID.outputMuteProperties(settableOnly: false)
+        )
+
+        for property in properties {
+            guard let observer = AudioPropertyObserver(
+                objectID: deviceID,
+                property: property,
+                queue: queue,
+                handler: { [weak self, weak route] in
+                    guard let self, let route else { return }
+                    self.refreshMasterGainUnsafe(route, deviceID: deviceID)
+                }
+            ) else { continue }
+            route.volumeObservers.append(observer)
+        }
+
+        refreshMasterGainUnsafe(route, deviceID: deviceID)
+    }
+
+    private func refreshMasterGainUnsafe(_ route: Route, deviceID: AudioObjectID) {
+        let muted = deviceID.readOutputMute() ?? false
+        // Прочитать нечем — не приглушаем: выдуманный множитель хуже, чем его
+        // отсутствие, а громкостью в этом случае всё равно рулит железо.
+        let volume = deviceID.readOutputVolume() ?? 1
+        route.renderState.setMasterGain(muted ? 0 : volume)
     }
 
     // MARK: - IOProc
 
-    private func startIfNeededUnsafe() throws {
-        guard aggregateID.isValid, !isRunning else { return }
+    private func startIfNeededUnsafe(_ route: Route) throws {
+        guard route.aggregateID.isValid, !route.isRunning else { return }
 
-        let renderState = self.renderState
+        let renderState = route.renderState
         var procID: AudioDeviceIOProcID?
 
         // queue: nil => Core Audio вызывает блок на своём realtime-потоке.
         try caCheck(
-            AudioDeviceCreateIOProcIDWithBlock(&procID, aggregateID, nil) { _, inputData, _, outputData, _ in
+            AudioDeviceCreateIOProcIDWithBlock(&procID, route.aggregateID, nil) { _, inputData, _, outputData, _ in
                 renderState.render(input: inputData, output: outputData)
             },
             "AudioDeviceCreateIOProcIDWithBlock"
         )
         guard let procID else { throw CAError.objectNotFound("IOProc") }
 
-        ioProcID = procID
-        try caCheck(AudioDeviceStart(aggregateID, procID), "AudioDeviceStart")
-        isRunning = true
-        AppLog.engine.info("IOProc started")
+        route.ioProcID = procID
+        try caCheck(AudioDeviceStart(route.aggregateID, procID), "AudioDeviceStart")
+        route.isRunning = true
+        AppLog.engine.info("Route \(route.outputUID, privacy: .public): IOProc started")
     }
 
     // MARK: - Teardown
 
     /// Только IOProc и агрегат. Таппы остаются жить — их переиспользует
     /// пересборка устройства при изменении набора приложений.
-    private func teardownDeviceUnsafe() {
-        if let ioProcID, aggregateID.isValid {
-            AudioDeviceStop(aggregateID, ioProcID)
-            AudioDeviceDestroyIOProcID(aggregateID, ioProcID)
+    private func teardownDeviceUnsafe(_ route: Route) {
+        if let ioProcID = route.ioProcID, route.aggregateID.isValid {
+            AudioDeviceStop(route.aggregateID, ioProcID)
+            AudioDeviceDestroyIOProcID(route.aggregateID, ioProcID)
         }
-        ioProcID = nil
-        isRunning = false
+        route.ioProcID = nil
+        route.isRunning = false
 
-        if aggregateID.isValid {
-            AudioHardwareDestroyAggregateDevice(aggregateID)
-            aggregateID = .unknown
+        if route.aggregateID.isValid {
+            AudioHardwareDestroyAggregateDevice(route.aggregateID)
+            route.aggregateID = .unknown
         }
     }
 
-    private func teardownUnsafe() {
-        teardownDeviceUnsafe()
+    private func teardownRouteUnsafe(_ route: Route) {
+        teardownDeviceUnsafe(route)
+        route.volumeObservers = []
+        route.renderState.updateChannelGains([])
+    }
 
-        for slot in slots {
+    private func teardownUnsafe() {
+        for route in routes.values { teardownRouteUnsafe(route) }
+        routes.removeAll()
+
+        for slot in taps.values {
             AudioHardwareDestroyProcessTap(slot.tapID)
         }
-        slots.removeAll()
-        renderState.updateChannelGains([])
+        taps.removeAll()
     }
 }

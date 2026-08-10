@@ -19,6 +19,7 @@ struct AppListView: View {
     let showIcons: Bool
     let showPercentage: Bool
     let sliderStyle: SliderStyleOption
+    let availableDevices: [AudioDeviceInfo]
 
     /// Высота видимой области списка — по ней определяются краевые зоны автопрокрутки.
     let viewportHeight: CGFloat
@@ -27,6 +28,7 @@ struct AppListView: View {
     let onVolumeChange: (String, Float) -> Void
     let onToggleMute: (String) -> Void
     let onTogglePin: (String) -> Void
+    let onSelectOutput: (String, String?) -> Void
     let onMove: (Int, Int) -> Void
     let onDragBegan: () -> Void
     let onDragEnded: () -> Void
@@ -79,12 +81,14 @@ struct AppListView: View {
             showIcon: showIcons,
             showPercentage: showPercentage,
             sliderStyle: sliderStyle,
+            availableDevices: availableDevices,
             isDragged: isDragged,
             canMoveUp: index > allowedRange(for: index).lower,
             canMoveDown: index < allowedRange(for: index).upper,
             onVolumeChange: { onVolumeChange(app.bundleID, $0) },
             onToggleMute: { onToggleMute(app.bundleID) },
             onTogglePin: { onTogglePin(app.bundleID) },
+            onSelectOutput: { uid in onSelectOutput(app.bundleID, uid) },
             onMove: { delta in move(from: index, to: index + delta) }
         )
         .background(

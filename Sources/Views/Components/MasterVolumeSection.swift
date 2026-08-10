@@ -47,9 +47,12 @@ struct MasterVolumeSection: View {
                 // Устройство вывода — кнопкой прямо здесь: отдельная секция
                 // «Выход» съедала бы половину высоты компактной панели.
                 OutputDeviceMenu(
-                    device: device,
+                    selectedUID: device?.uid,
                     availableDevices: availableDevices,
-                    onSelect: onSelectDevice,
+                    onSelect: { uid in
+                        guard let uid, let picked = availableDevices.first(where: { $0.uid == uid }) else { return }
+                        onSelectDevice(picked)
+                    },
                     fixedSize: true
                 ) {
                     Image(systemName: "airplayaudio")

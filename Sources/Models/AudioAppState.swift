@@ -23,6 +23,8 @@ struct AudioAppState: Identifiable, Equatable {
     /// Приложение сейчас запущено. `false` — это закреплённая строка закрытого
     /// приложения: громкость ей выставить можно, а таппить нечего.
     var isRunning: Bool = true
+    /// Своё устройство вывода. `nil` — звучит туда же, куда и система.
+    var outputDeviceUID: String? = nil
 
     var id: String { bundleID }
 
@@ -51,6 +53,7 @@ struct AudioAppState: Identifiable, Equatable {
         lhs.isPlaying == rhs.isPlaying &&
         lhs.isPinned == rhs.isPinned &&
         lhs.isRunning == rhs.isRunning &&
+        lhs.outputDeviceUID == rhs.outputDeviceUID &&
         lhs.name == rhs.name
     }
 }
@@ -74,6 +77,8 @@ struct StoredAppSettings: Codable, Equatable {
     var displayName: String
     var lastSeen: Date
     var isPinned: Bool
+    /// UID устройства вывода, выбранного для этого приложения.
+    var outputDeviceUID: String?
     /// Место, на которое строку вернёт открепление. `nil` — возвращать некуда:
     /// либо не закреплено, либо пользователь сам передвинул строку после
     /// закрепления, и его выбор важнее прежнего места.
@@ -85,7 +90,8 @@ struct StoredAppSettings: Codable, Equatable {
          displayName: String = "",
          lastSeen: Date = .now,
          isPinned: Bool = false,
-         anchorBeforePin: PinAnchor? = nil) {
+         anchorBeforePin: PinAnchor? = nil,
+         outputDeviceUID: String? = nil) {
         self.volume = volume
         self.isMuted = isMuted
         self.rememberVolume = rememberVolume
@@ -93,6 +99,7 @@ struct StoredAppSettings: Codable, Equatable {
         self.lastSeen = lastSeen
         self.isPinned = isPinned
         self.anchorBeforePin = anchorBeforePin
+        self.outputDeviceUID = outputDeviceUID
     }
 
     /// Декодер написан руками из-за одной особенности Swift: синтезированный
@@ -111,5 +118,6 @@ struct StoredAppSettings: Codable, Equatable {
         lastSeen = try container.decode(Date.self, forKey: .lastSeen)
         isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
         anchorBeforePin = try container.decodeIfPresent(PinAnchor.self, forKey: .anchorBeforePin)
+        outputDeviceUID = try container.decodeIfPresent(String.self, forKey: .outputDeviceUID)
     }
 }

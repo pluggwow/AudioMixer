@@ -43,7 +43,6 @@ struct GeneralSettingsView: View {
                 ))
                 Toggle("Показывать иконку в Dock", isOn: $settings.showDockIcon)
                 Toggle("Показывать проценты громкости", isOn: $settings.showVolumePercentage)
-                Toggle("Автоматически показывать новые аудиоприложения", isOn: $settings.autoShowNewAudioApps)
             }
         }
         .formStyle(.grouped)

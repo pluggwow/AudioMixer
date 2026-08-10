@@ -40,7 +40,6 @@ final class SettingsStore: ObservableObject {
         didSet { applyActivationPolicy() }
     }
     @AppStorage("showVolumePercentage") var showVolumePercentage: Bool = true
-    @AppStorage("autoShowNewAudioApps") var autoShowNewAudioApps: Bool = true
     @AppStorage("defaultVolume") var defaultVolume: Double = 1.0
     @AppStorage("rememberAppVolumes") var rememberAppVolumes: Bool = true
     @AppStorage("appearanceMode") var appearanceModeRaw: String = AppearanceMode.system.rawValue

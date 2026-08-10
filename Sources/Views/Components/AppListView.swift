@@ -83,13 +83,10 @@ struct AppListView: View {
             sliderStyle: sliderStyle,
             availableDevices: availableDevices,
             isDragged: isDragged,
-            canMoveUp: index > allowedRange(for: index).lower,
-            canMoveDown: index < allowedRange(for: index).upper,
             onVolumeChange: { onVolumeChange(app.bundleID, $0) },
             onToggleMute: { onToggleMute(app.bundleID) },
             onTogglePin: { onTogglePin(app.bundleID) },
-            onSelectOutput: { uid in onSelectOutput(app.bundleID, uid) },
-            onMove: { delta in move(from: index, to: index + delta) }
+            onSelectOutput: { uid in onSelectOutput(app.bundleID, uid) }
         )
         .background(
             GeometryReader { proxy in
@@ -201,13 +198,6 @@ struct AppListView: View {
             autoScrollShift = 0
         }
         onDragEnded()
-    }
-
-    private func move(from source: Int, to destination: Int) {
-        guard apps.indices.contains(destination) else { return }
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-            onMove(source, destination)
-        }
     }
 
     // MARK: - Автопрокрутка у краёв

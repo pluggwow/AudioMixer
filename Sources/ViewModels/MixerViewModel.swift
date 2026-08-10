@@ -298,12 +298,6 @@ final class MixerViewModel: ObservableObject {
         hasCustomOrder = orderStore.isCustom
     }
 
-    /// Сдвинуть строку на позицию вверх (-1) или вниз (+1). Для контекстного меню.
-    func moveApp(bundleID: String, by delta: Int) {
-        guard let index = apps.firstIndex(where: { $0.bundleID == bundleID }) else { return }
-        moveApp(from: index, to: min(max(index + delta, 0), apps.count - 1))
-    }
-
     /// Забыть ручной порядок и вернуться к автоматическому.
     func resetOrder() {
         orderStore.reset()

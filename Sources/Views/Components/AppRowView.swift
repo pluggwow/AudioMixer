@@ -18,16 +18,12 @@ struct AppRowView: View {
     var availableDevices: [AudioDeviceInfo] = []
     /// Строку сейчас тащат мышью.
     var isDragged: Bool = false
-    var canMoveUp: Bool = false
-    var canMoveDown: Bool = false
 
     let onVolumeChange: (Float) -> Void
     let onToggleMute: () -> Void
     var onTogglePin: () -> Void = {}
     /// nil — вернуть приложение на системное устройство.
     var onSelectOutput: (String?) -> Void = { _ in }
-    /// Сдвиг на позицию: -1 вверх, +1 вниз.
-    var onMove: (Int) -> Void = { _ in }
 
     @State private var isHovering = false
     @State private var isNameHovering = false
@@ -153,13 +149,6 @@ struct AppRowView: View {
             Divider()
 
             Button(app.isPinned ? "Открепить" : "Закрепить", action: onTogglePin)
-
-            Divider()
-
-            Button("Переместить выше") { onMove(-1) }
-                .disabled(!canMoveUp)
-            Button("Переместить ниже") { onMove(1) }
-                .disabled(!canMoveDown)
         }
     }
 

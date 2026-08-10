@@ -34,6 +34,7 @@
 		C88AC38B120737C8C09B46D8 /* AudioMixerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 792AF0CBB112264987BF147D /* AudioMixerApp.swift */; };
 		DF200CC8A9F953B537572D3E /* AudioDeviceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 183D42D1B9FA2E8C6B211111 /* AudioDeviceManager.swift */; };
 		DFC85A460EAB861F36752BDC /* AppOrderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FFEBFEAD8C05EF6D0019BB6 /* AppOrderStore.swift */; };
+		E4B78F2277C37AC8A67B3BD3 /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E4BD3ACA6E5B5C15E922F992 /* Accelerate.framework */; };
 		FD210C53A3CCF9369728B7CD /* VolumeSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FDFD0758F5713FE7D579E4B /* VolumeSlider.swift */; };
 		FECF4138552B48AFA107F161 /* AppRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A66C67512A32AB272CAA5857 /* AppRowView.swift */; };
 /* End PBXBuildFile section */
@@ -67,6 +68,7 @@
 		D06139F4C4128007CF28B762 /* AudioMixer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AudioMixer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DC96038FFDF693487FAB7CE7 /* AppContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppContainer.swift; sourceTree = "<group>"; };
 		DD1D0B4A9A402B2079829388 /* AudioProcessTapEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioProcessTapEngine.swift; sourceTree = "<group>"; };
+		E4BD3ACA6E5B5C15E922F992 /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
 		E4FF5D87A9AD38E2429BD82A /* AudioProcessMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioProcessMonitor.swift; sourceTree = "<group>"; };
 		F57BE6D30AC2AA5FA1152467 /* MasterVolumeSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MasterVolumeSection.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -79,6 +81,7 @@
 				4ED3D2AEB934D10059BC4093 /* CoreAudio.framework in Frameworks */,
 				59C88A1C9EAF12B0E0C1874E /* AudioToolbox.framework in Frameworks */,
 				85AA62D1CDD15540CE5B1625 /* ServiceManagement.framework in Frameworks */,
+				E4B78F2277C37AC8A67B3BD3 /* Accelerate.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -166,6 +169,7 @@
 		86F9D31DA634BF037AE34C67 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				E4BD3ACA6E5B5C15E922F992 /* Accelerate.framework */,
 				6BDCBB55536E40288A8FFCC5 /* AudioToolbox.framework */,
 				5710AAA229FD7118940672E4 /* CoreAudio.framework */,
 				49C5B53B91BD4BBEC37598FF /* ServiceManagement.framework */,

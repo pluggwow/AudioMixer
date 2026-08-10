@@ -48,3 +48,4 @@ targets:
       - sdk: CoreAudio.framework
       - sdk: AudioToolbox.framework
       - sdk: ServiceManagement.framework
+      - sdk: Accelerate.framework

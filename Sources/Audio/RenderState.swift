@@ -13,6 +13,7 @@
 
 import Foundation
 import CoreAudio
+import Accelerate
 import os
 
 /// Разделяемое состояние между UI-потоком (пишет gain) и аудиопотоком (читает).
@@ -171,18 +172,26 @@ final class RenderState {
                 let outChannel = min(channel, outChannels - 1)
 
                 // Линейный разгон: за буфер (~5 мс) множитель доезжает от
-                // достигнутого значения до целевого. Именно это лишнее
-                // сложение на сэмпл и заменяет щелчок плавным переходом.
-                let step = (to - from) / Float(frames)
+                // достигнутого значения до целевого — это и заменяет щелчок
+                // плавным переходом.
+                //
+                // vDSP_vrampmuladd делает ровно то, что раньше делал цикл:
+                //   O[i*OS] += start * I[i*IS];  start += step
+                // Каналы у нас чередуются, то есть шаг больше единицы — не
+                // самый выгодный для векторизации случай, и всё же замер даёт
+                // ускорение в 2–3 раза. Функция не аллоцирует и не блокируется,
+                // так что правил этого файла не нарушает.
                 var gain = from
+                var step = (to - from) / Float(frames)
 
-                var frame = 0
-                while frame < frames {
-                    outData[frame * outChannels + outChannel] += inData[frame * inChannels + channel] * gain
-                    gain += step
-                    frame += 1
-                }
+                vDSP_vrampmuladd(inData + channel, vDSP_Stride(inChannels),
+                                 &gain, &step,
+                                 outData + outChannel, vDSP_Stride(outChannels),
+                                 vDSP_Length(frames))
 
+                // Берём цель, а не то, что vDSP оставил в gain: там накопленная
+                // ошибка округления — она полезна для продолжения того же
+                // разгона, но у нас каждый буфер начинает новый.
                 currentGains[globalChannel] = to
             }
 

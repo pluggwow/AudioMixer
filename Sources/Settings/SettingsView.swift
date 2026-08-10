@@ -99,15 +99,18 @@ struct AppearanceSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Picker("Тема", selection: Binding(
-                    get: { settings.appearanceMode },
-                    set: { settings.appearanceMode = $0 }
-                )) {
-                    ForEach(AppearanceMode.allCases) { mode in
-                        Text(mode.title).tag(mode)
+                LabeledContent("Оформление") {
+                    HStack(spacing: 14) {
+                        ForEach(AppearanceMode.allCases) { mode in
+                            ThemeOption(
+                                mode: mode,
+                                isSelected: settings.appearanceMode == mode
+                            ) {
+                                settings.appearanceMode = mode
+                            }
+                        }
                     }
                 }
-                .pickerStyle(.segmented)
             }
 
             Section {
@@ -201,6 +204,108 @@ struct ApplicationsSettingsView: View {
                 }
                 .padding(10)
             }
+        }
+    }
+}
+
+// MARK: - Выбор темы
+
+/// Тема выбирается картинкой, а не строкой в списке: так это сделано в
+/// системных настройках, и по миниатюре сразу видно, что получится.
+struct ThemeOption: View {
+
+    let mode: AppearanceMode
+    let isSelected: Bool
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    private let size = CGSize(width: 68, height: 44)
+    private let corner: CGFloat = 6
+
+    var body: some View {
+        VStack(spacing: 5) {
+            preview
+                .frame(width: size.width, height: size.height)
+                .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: corner, style: .continuous)
+                        .strokeBorder(.black.opacity(0.15), lineWidth: 0.5)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: corner + 2.5, style: .continuous)
+                        .strokeBorder(Color.accentColor, lineWidth: 2.5)
+                        .padding(-3)
+                        .opacity(isSelected ? 1 : 0)
+                )
+                .scaleEffect(isHovering && !isSelected ? 1.03 : 1)
+
+            Text(mode.title)
+                .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
+                .foregroundStyle(isSelected ? .primary : .secondary)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(perform: action)
+        .onHover { hovering in
+            withAnimation(.easeOut(duration: 0.12)) { isHovering = hovering }
+        }
+        .animation(.easeOut(duration: 0.15), value: isSelected)
+        .accessibilityElement()
+        .accessibilityLabel(mode.title)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+    }
+
+    @ViewBuilder
+    private var preview: some View {
+        switch mode {
+        case .light: miniature(dark: false)
+        case .dark:  miniature(dark: true)
+        case .system:
+            // Половина светлая, половина тёмная — как рисует систему сама macOS.
+            ZStack {
+                miniature(dark: true)
+                miniature(dark: false)
+                    .mask(HStack(spacing: 0) { Rectangle(); Color.clear })
+            }
+        }
+    }
+
+    /// Миниатюра нашей же панели: заголовок и три строки со слайдерами.
+    /// Цвета заданы числами, а не системными: миниатюра должна показывать
+    /// свою тему, а не ту, что сейчас в приложении.
+    private func miniature(dark: Bool) -> some View {
+        let background = dark ? Color(white: 0.14) : Color(white: 0.97)
+        let chrome = dark ? Color(white: 0.32) : Color(white: 0.78)
+        let track = dark ? Color(white: 0.30) : Color(white: 0.85)
+        let fill = dark ? Color.white : Color(white: 0.35)
+
+        return ZStack {
+            background
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 3) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        Circle().fill(chrome).frame(width: 3.5, height: 3.5)
+                    }
+                }
+                .padding(.bottom, 1)
+
+                ForEach(Array([0.62, 0.34, 0.82].enumerated()), id: \.offset) { _, level in
+                    HStack(spacing: 3) {
+                        RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                            .fill(chrome)
+                            .frame(width: 6, height: 6)
+                        GeometryReader { proxy in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(track)
+                                Capsule().fill(fill)
+                                    .frame(width: proxy.size.width * level)
+                            }
+                        }
+                        .frame(height: 2.5)
+                    }
+                }
+            }
+            .padding(6)
         }
     }
 }

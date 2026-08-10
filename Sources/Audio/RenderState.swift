@@ -25,7 +25,17 @@ final class RenderState {
     /// Потолок каналов входа. 32 таппа по стерео = 64. С запасом.
     static let maxChannels = 128
 
+    /// Целевые гейны: куда громкость должна прийти. Пишет UI под локом.
     private let gains: UnsafeMutablePointer<Float>
+
+    /// Достигнутые гейны: откуда начинается разгон в следующем буфере.
+    ///
+    /// Принадлежат ИСКЛЮЧИТЕЛЬНО аудиопотоку — никто, кроме `render`, их не
+    /// трогает, поэтому лок им не нужен. Из-за них смена громкости перестаёт
+    /// быть ступенькой на границе буфера: множитель доезжает до цели за буфер,
+    /// по сэмплу, и разрыва в волне не возникает.
+    private let currentGains: UnsafeMutablePointer<Float>
+
     private let lock: UnsafeMutablePointer<os_unfair_lock>
     private var activeChannels: Int = 0
 
@@ -37,6 +47,11 @@ final class RenderState {
         gains = .allocate(capacity: Self.maxChannels)
         gains.initialize(repeating: 0, count: Self.maxChannels)
 
+        // С нуля: первый буфер после включения движка нарастает от тишины,
+        // а не начинается со скачка.
+        currentGains = .allocate(capacity: Self.maxChannels)
+        currentGains.initialize(repeating: 0, count: Self.maxChannels)
+
         masterGain = .allocate(capacity: 1)
         masterGain.initialize(to: 1.0)
 
@@ -47,6 +62,8 @@ final class RenderState {
     deinit {
         gains.deinitialize(count: Self.maxChannels)
         gains.deallocate()
+        currentGains.deinitialize(count: Self.maxChannels)
+        currentGains.deallocate()
         masterGain.deinitialize(count: 1)
         masterGain.deallocate()
         lock.deinitialize(count: 1)
@@ -109,8 +126,11 @@ final class RenderState {
         let outFrames = Int(outBuffer.mDataByteSize) / (MemoryLayout<Float>.size * outChannels)
         guard outFrames > 0 else { return }
 
+        // Ранний выход по нулевому мастеру убран намеренно: он обрубал бы звук
+        // ступенькой ровно в тот момент, когда пользователь уводит системную
+        // громкость в ноль. Теперь ноль — такая же цель разгона, как любая
+        // другая, а когда все каналы до неё доехали, цикл и так пропускает их.
         let master = masterGain.pointee
-        if master <= 0 { return }
 
         let inputBuffers = UnsafeMutableAudioBufferListPointer(
             UnsafeMutablePointer(mutating: input)
@@ -130,23 +150,40 @@ final class RenderState {
 
             let inFrames = Int(buffer.mDataByteSize) / (MemoryLayout<Float>.size * inChannels)
             let frames = min(inFrames, outFrames)
+            // Пустой буфер: делить на 0 кадров нельзя, шаг разгона стал бы NaN.
+            guard frames > 0 else {
+                channelCursor += inChannels
+                continue
+            }
 
             for channel in 0..<inChannels {
                 let globalChannel = channelCursor + channel
                 guard globalChannel < activeChannels else { break }
 
-                let gain = gains[globalChannel] * master
-                if gain <= 0 { continue }
+                let from = currentGains[globalChannel]
+                let to = gains[globalChannel] * master
+
+                // Канал молчал и молчит — складывать нечего.
+                if from <= 0 && to <= 0 { continue }
 
                 // Каналы входа кладём на одноимённые каналы выхода;
                 // если выход уже (моно) — сворачиваем в последний доступный.
                 let outChannel = min(channel, outChannels - 1)
 
+                // Линейный разгон: за буфер (~5 мс) множитель доезжает от
+                // достигнутого значения до целевого. Именно это лишнее
+                // сложение на сэмпл и заменяет щелчок плавным переходом.
+                let step = (to - from) / Float(frames)
+                var gain = from
+
                 var frame = 0
                 while frame < frames {
                     outData[frame * outChannels + outChannel] += inData[frame * inChannels + channel] * gain
+                    gain += step
                     frame += 1
                 }
+
+                currentGains[globalChannel] = to
             }
 
             channelCursor += inChannels

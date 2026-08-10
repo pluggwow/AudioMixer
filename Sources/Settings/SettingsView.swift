@@ -26,6 +26,11 @@ struct SettingsView: View {
         }
         .frame(width: 480, height: 360)
         .preferredColorScheme(settings.appearanceMode.colorScheme)
+        // preferredColorScheme красит только содержимое: заголовок и панель
+        // вкладок остаются системными, и при теме, отличной от системной,
+        // получается тёмная рамка вокруг светлого окна. Тему приходится
+        // задавать самому окну.
+        .background(WindowAppearance(appearance: settings.appearanceMode.nsAppearance))
     }
 }
 
@@ -202,6 +207,26 @@ struct ApplicationsSettingsView: View {
                 }
                 .padding(10)
             }
+        }
+    }
+}
+
+
+/// Проставляет тему окну, в котором лежит.
+///
+/// Именно окну, а не всему приложению через `NSApp.appearance`: тот заодно
+/// перекрасил бы и значок в строке меню, а он должен следовать за строкой
+/// меню, а не за нашей настройкой.
+struct WindowAppearance: NSViewRepresentable {
+
+    let appearance: NSAppearance?
+
+    func makeNSView(context: Context) -> NSView { NSView() }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        // На следующем витке цикла: во время обновления вью окна у неё ещё нет.
+        DispatchQueue.main.async {
+            view.window?.appearance = appearance
         }
     }
 }

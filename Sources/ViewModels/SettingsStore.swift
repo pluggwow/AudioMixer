@@ -25,6 +25,15 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
         case .dark:   return .dark
         }
     }
+
+    /// То же самое для AppKit: SwiftUI-схемой окно не покрасить.
+    var nsAppearance: NSAppearance? {
+        switch self {
+        case .system: return nil
+        case .light:  return NSAppearance(named: .aqua)
+        case .dark:   return NSAppearance(named: .darkAqua)
+        }
+    }
 }
 
 enum SliderStyleOption: String, CaseIterable, Identifiable {

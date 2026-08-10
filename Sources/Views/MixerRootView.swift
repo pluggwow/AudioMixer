@@ -94,6 +94,10 @@ struct MixerRootView: View {
             .allowsHitTesting(false)
         }
         .preferredColorScheme(settings.appearanceMode.colorScheme)
+        // Тем же способом, что и окно настроек: preferredColorScheme(nil) не
+        // возвращает окну системную тему, если раньше стояла своя, и панель
+        // залипала в старой.
+        .background(WindowAppearance(appearance: settings.appearanceMode.nsAppearance))
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: viewModel.apps)
         .animation(.easeInOut(duration: 0.2), value: viewModel.permissionStatus)
     }
@@ -226,7 +230,7 @@ struct MixerRootView: View {
 
     private var footer: some View {
         HStack(spacing: 4) {
-            FooterButton(title: "Настройки…", action: openSettingsWindow)
+            FooterButton(title: "Настройки", action: openSettingsWindow)
 
             Spacer()
 

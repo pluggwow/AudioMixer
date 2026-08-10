@@ -25,11 +25,6 @@ struct SettingsView: View {
                 .tabItem { Label("Приложения", systemImage: "square.grid.2x2") }
         }
         .frame(width: 480, height: 360)
-        .preferredColorScheme(settings.appearanceMode.colorScheme)
-        // preferredColorScheme красит только содержимое: заголовок и панель
-        // вкладок остаются системными, и при теме, отличной от системной,
-        // получается тёмная рамка вокруг светлого окна. Тему приходится
-        // задавать самому окну.
         .background(WindowAppearance(appearance: settings.appearanceMode.nsAppearance))
     }
 }
@@ -212,11 +207,18 @@ struct ApplicationsSettingsView: View {
 }
 
 
-/// Проставляет тему окну, в котором лежит.
+/// Проставляет тему окну, в котором лежит, — единственным способом на всё
+/// приложение.
 ///
-/// Именно окну, а не всему приложению через `NSApp.appearance`: тот заодно
-/// перекрасил бы и значок в строке меню, а он должен следовать за строкой
-/// меню, а не за нашей настройкой.
+/// Окну, а не всему приложению через `NSApp.appearance`: тот заодно перекрасил
+/// бы значок в строке меню, а он должен следовать за строкой меню, а не за
+/// нашей настройкой.
+///
+/// И вместо `preferredColorScheme`, а не вместе с ним. Тот красит содержимое
+/// в обход окна, и получалось двоевластие: рамка следовала за системой,
+/// содержимое — за оставшимся override. При возврате на «Системную» тема
+/// менялась не сразу, а только при следующем внешнем событии — например, при
+/// переключении между приложениями.
 struct WindowAppearance: NSViewRepresentable {
 
     let appearance: NSAppearance?
@@ -226,7 +228,13 @@ struct WindowAppearance: NSViewRepresentable {
     func updateNSView(_ view: NSView, context: Context) {
         // На следующем витке цикла: во время обновления вью окна у неё ещё нет.
         DispatchQueue.main.async {
-            view.window?.appearance = appearance
+            guard let window = view.window,
+                  window.appearance?.name != appearance?.name else { return }
+
+            window.appearance = appearance
+            // Содержимое должно наследовать тему у окна, а не держать свою:
+            // иначе оно так и останется в прежней.
+            window.contentView?.appearance = nil
         }
     }
 }

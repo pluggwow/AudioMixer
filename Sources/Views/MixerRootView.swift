@@ -3,15 +3,12 @@
 //  AudioMixer
 //
 //  Главная панель из Menu Bar, собранная по образцу системной панели «Звук»
-//  из Control Center: заголовок, один слайдер, секция «Выход», список
-//  приложений. Материал вместо плотной заливки, системная типографика,
-//  разделители между секциями.
+//  из Control Center: заголовок, один слайдер, список приложений. Материал
+//  вместо плотной заливки, системная типографика, разделители между секциями.
 //
-//  Компоновок две:
-//    B (по умолчанию) — «Выход» отдельной секцией под слайдером;
-//    A (компактный режим) — выбор устройства кнопкой в строке слайдера.
-//  Вариант B нативнее: он повторяет раскладку самой панели «Звук», где
-//  устройство — не иконка, а строка с именем.
+//  Панель намеренно только компактная: устройство вывода — кнопкой в строке
+//  слайдера, а не отдельной секцией. Секция «Выход» занимала полсотни точек
+//  высоты ради одной строки, которую всё равно видно по значку.
 //
 
 import SwiftUI
@@ -34,28 +31,13 @@ struct MixerRootView: View {
 
             MasterVolumeSection(
                 systemVolume: viewModel.systemVolume,
-                compact: settings.compactMode,
                 device: viewModel.outputDevice,
                 availableDevices: viewModel.availableDevices,
                 onSelectDevice: { viewModel.selectOutputDevice($0) }
             )
             .padding(.horizontal, sidePadding)
-            .padding(.top, 12)
-            .padding(.bottom, 10)
-
-            // В компактном режиме устройство уже показано кнопкой в строке
-            // слайдера — отдельная секция была бы повтором.
-            if !settings.compactMode {
-                separator
-
-                OutputDeviceSection(
-                    device: viewModel.outputDevice,
-                    availableDevices: viewModel.availableDevices,
-                    onSelect: { viewModel.selectOutputDevice($0) }
-                )
-                .padding(.horizontal, sidePadding)
-                .padding(.vertical, 8)
-            }
+            .padding(.top, 10)
+            .padding(.bottom, 8)
 
             if shouldShowPermissionBanner {
                 PermissionBanner(
@@ -159,7 +141,6 @@ struct MixerRootView: View {
                             showIcons: settings.showAppIcons,
                             showPercentage: settings.showVolumePercentage,
                             sliderStyle: settings.sliderStyle,
-                            compact: settings.compactMode,
                             viewportHeight: scrollHeight,
                             scrollProxy: scrollProxy,
                             onVolumeChange: { bundleID, volume in
@@ -188,10 +169,11 @@ struct MixerRootView: View {
     }
 
     private var scrollHeight: CGFloat {
-        let rowHeight = AppListView.estimatedRowHeight(compact: settings.compactMode)
+        let rowHeight = AppListView.rowHeight
         let spacing = AppListView.rowSpacing
-        // Потолок восемь строк: дальше панель перестаёт быть компактной.
-        let visible = CGFloat(min(viewModel.apps.count, 8))
+        // Потолок десять строк: строки низкие, столько ещё помещается,
+        // не превращая панель в простыню.
+        let visible = CGFloat(min(viewModel.apps.count, 10))
         guard visible > 0 else { return 0 }
         return visible * rowHeight + (visible - 1) * spacing
     }

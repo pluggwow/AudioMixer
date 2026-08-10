@@ -12,9 +12,6 @@ struct MasterVolumeSection: View {
 
     @ObservedObject var systemVolume: SystemVolumeController
 
-    /// Ultra-compact режим (вариант A): выбор устройства уезжает сюда же,
-    /// в строку со слайдером, и отдельная секция «Выход» не показывается.
-    let compact: Bool
     let device: AudioDeviceInfo?
     let availableDevices: [AudioDeviceInfo]
     let onSelectDevice: (AudioDeviceInfo) -> Void
@@ -47,20 +44,21 @@ struct MasterVolumeSection: View {
 
                 muteButton
 
-                if compact {
-                    OutputDeviceMenu(
-                        device: device,
-                        availableDevices: availableDevices,
-                        onSelect: onSelectDevice
-                    ) {
-                        Image(systemName: "airplayaudio")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(.secondary)
-                            .frame(width: 22, height: 22)
-                            .contentShape(Rectangle())
-                    }
-                    .help("Устройство вывода")
+                // Устройство вывода — кнопкой прямо здесь: отдельная секция
+                // «Выход» съедала бы половину высоты компактной панели.
+                OutputDeviceMenu(
+                    device: device,
+                    availableDevices: availableDevices,
+                    onSelect: onSelectDevice,
+                    fixedSize: true
+                ) {
+                    Image(systemName: "airplayaudio")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 20, height: 20)
+                        .contentShape(Rectangle())
                 }
+                .help(device.map { "Выход: \($0.name)" } ?? "Устройство вывода")
             }
 
             if !systemVolume.isControllable {

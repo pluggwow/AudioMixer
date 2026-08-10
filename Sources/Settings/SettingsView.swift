@@ -42,7 +42,7 @@ struct GeneralSettingsView: View {
                     set: { settings.setLaunchAtLogin($0) }
                 ))
                 Toggle("Показывать иконку в Dock", isOn: $settings.showDockIcon)
-                Toggle("Показывать проценты громкости", isOn: $settings.showVolumePercentage)
+                Toggle("Показывать проценты при наведении", isOn: $settings.showVolumePercentage)
             }
         }
         .formStyle(.grouped)
@@ -112,8 +112,6 @@ struct AppearanceSettingsView: View {
             }
 
             Section {
-                Toggle("Компактный режим", isOn: $settings.compactMode)
-                    .help("Строки ниже, а устройство вывода — кнопкой в строке громкости вместо отдельной секции")
                 Toggle("Показывать иконки приложений", isOn: $settings.showAppIcons)
                 Picker("Стиль слайдера", selection: Binding(
                     get: { settings.sliderStyle },

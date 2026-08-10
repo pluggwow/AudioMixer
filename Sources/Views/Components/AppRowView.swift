@@ -13,7 +13,6 @@ struct AppRowView: View {
     let showIcon: Bool
     let showPercentage: Bool
     let sliderStyle: SliderStyleOption
-    let compact: Bool
 
     /// Строку сейчас тащат мышью.
     var isDragged: Bool = false
@@ -30,16 +29,16 @@ struct AppRowView: View {
 
     /// Высота строки задаётся, а не выводится из содержимого: по ней панель
     /// считает свой размер, а перетаскивание — шаг сетки.
-    static func height(compact: Bool) -> CGFloat { compact ? 28 : 36 }
+    static let height: CGFloat = 28
 
-    private var iconSize: CGFloat { compact ? 18 : 22 }
+    private let iconSize: CGFloat = 18
     /// Фиксирован слайдер, а не название: тогда слайдеры соседних строк стоят
     /// по одной вертикали (всё, что правее названия, одной ширины), а имени
     /// достаётся вся оставшаяся строка — длинные названия не режутся зря.
-    private var sliderWidth: CGFloat { compact ? 104 : 112 }
-    private var percentWidth: CGFloat { compact ? 30 : 32 }
-    private var muteSize: CGFloat { compact ? 16 : 18 }
-    private var spacing: CGFloat { compact ? 6 : 7 }
+    private let sliderWidth: CGFloat = 104
+    private let percentWidth: CGFloat = 30
+    private let muteSize: CGFloat = 16
+    private let spacing: CGFloat = 6
 
     var body: some View {
         HStack(spacing: spacing) {
@@ -50,7 +49,7 @@ struct AppRowView: View {
 
             HStack(spacing: 3) {
                 Text(app.name)
-                    .font(.system(size: compact ? 11 : 12))
+                    .font(.system(size: 11))
                     .foregroundStyle(app.isSilent ? .secondary : .primary)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -82,17 +81,22 @@ struct AppRowView: View {
             )
             .frame(width: sliderWidth)
 
+            // Проценты показываются только под курсором: в покое строка чище,
+            // а цифра нужна ровно тогда, когда громкость собираются менять.
+            // Место под неё занято всегда — иначе слайдер дёргался бы вбок
+            // при наведении, и попасть по нему было бы тяжело.
             if showPercentage {
                 Text(app.isMuted ? "Выкл." : app.percentText)
-                    .font(.system(size: compact ? 10 : 11).monospacedDigit())
+                    .font(.system(size: 10).monospacedDigit())
                     .foregroundStyle(.secondary)
                     .contentTransition(.numericText())
                     .frame(width: percentWidth, alignment: .trailing)
+                    .opacity(isHovering ? 1 : 0)
             }
 
             Button(action: onToggleMute) {
                 Image(systemName: app.speakerSymbol)
-                    .font(.system(size: compact ? 10 : 11))
+                    .font(.system(size: 10))
                     .foregroundStyle(app.isSilent ? Color.secondary : Color.primary)
                     .frame(width: muteSize, height: muteSize)
                     .contentShape(Rectangle())
@@ -109,7 +113,7 @@ struct AppRowView: View {
         .opacity(app.isRunning ? 1 : 0.55)
         .animation(.easeInOut(duration: 0.2), value: app.isRunning)
         .padding(.horizontal, 6)
-        .frame(height: Self.height(compact: compact))
+        .frame(height: Self.height)
         // Без contentShape кликом ловятся только сами иконка, текст и слайдер,
         // а промежутки между ними — нет, и строка отзывается через раз.
         .contentShape(Rectangle())

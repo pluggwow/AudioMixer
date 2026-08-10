@@ -43,7 +43,6 @@ final class SettingsStore: ObservableObject {
     @AppStorage("defaultVolume") var defaultVolume: Double = 1.0
     @AppStorage("rememberAppVolumes") var rememberAppVolumes: Bool = true
     @AppStorage("appearanceMode") var appearanceModeRaw: String = AppearanceMode.system.rawValue
-    @AppStorage("compactMode") var compactMode: Bool = false
     @AppStorage("showAppIcons") var showAppIcons: Bool = true
     @AppStorage("sliderStyle") var sliderStyleRaw: String = SliderStyleOption.capsule.rawValue
     @AppStorage("launchAtLogin") var launchAtLoginPreference: Bool = false

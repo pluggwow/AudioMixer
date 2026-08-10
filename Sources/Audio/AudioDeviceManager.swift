@@ -70,7 +70,10 @@ final class AudioDeviceManager: ObservableObject {
 
         availableDevices = ids
             .compactMap { AudioDeviceInfo(deviceID: $0) }
-            .filter { $0.hasOutput && !$0.name.isEmpty }
+            // Свои агрегаты в список не пускаем: приватность прячет их от чужих
+            // процессов, но не от нас, и без фильтра AudioMixer предлагался бы
+            // как устройство вывода — звук заворачивался бы в нас же самих.
+            .filter { $0.hasOutput && !$0.name.isEmpty && !AudioMixerDevice.isOwnAggregate(uid: $0.uid) }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 

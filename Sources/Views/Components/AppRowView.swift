@@ -2,7 +2,8 @@
 //  AppRowView.swift
 //  AudioMixer
 //
-//  Строка приложения в одну линию: иконка, название, слайдер, проценты, mute.
+//  Строка приложения в одну линию: иконка, название, слайдер, mute, выход.
+//  Проценты живут в подсказке над курсором, в самой строке их нет.
 //
 
 import SwiftUI
@@ -36,11 +37,11 @@ struct AppRowView: View {
     static let height: CGFloat = 28
 
     private let iconSize: CGFloat = 18
-    /// Фиксирован слайдер, а не название: тогда слайдеры соседних строк стоят
-    /// по одной вертикали (всё, что правее названия, одной ширины), а имени
-    /// достаётся вся оставшаяся строка — длинные названия не режутся зря.
-    private let sliderWidth: CGFloat = 104
-    private let percentWidth: CGFloat = 30
+    /// Проценты уехали в подсказку над курсором, поэтому справа от слайдера
+    /// больше ничего не появляется — слайдер тянется на всю оставшуюся ширину.
+    /// Фиксировано теперь название: иначе слайдеры соседних строк разъехались
+    /// бы по вертикали вслед за длиной имени.
+    private let nameWidth: CGFloat = 96
     private let muteSize: CGFloat = 16
     private let outputSize: CGFloat = 16
     private let spacing: CGFloat = 6
@@ -75,7 +76,7 @@ struct AppRowView: View {
 
                 Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(width: nameWidth, alignment: .leading)
 
             VolumeSlider(
                 value: Binding(
@@ -90,24 +91,10 @@ struct AppRowView: View {
                 // Цвет задаётся явно, а не оставляется на .saturation строки:
                 // фильтр насыщенности до заливки слайдера доходит не всегда,
                 // и цветная полоска выбивалась из приглушённой строки.
-                accentTint: (app.isSilent || !app.isRunning) ? .secondary : .accentColor
+                accentTint: (app.isSilent || !app.isRunning) ? .secondary : nil,
+                hoverLabel: showPercentage ? (app.isMuted ? "Выкл." : app.percentText) : nil
             )
-            .frame(width: sliderWidth)
-
-            // Проценты показываются только под курсором: в покое строка чище,
-            // а цифра нужна ровно тогда, когда громкость собираются менять.
-            // Место под неё занято всегда — иначе слайдер дёргался бы вбок
-            // при наведении, и попасть по нему было бы тяжело.
-            if showPercentage {
-                Text(app.isMuted ? "Выкл." : app.percentText)
-                    .font(.system(size: 10).monospacedDigit())
-                    .foregroundStyle(.secondary)
-                    .contentTransition(.numericText())
-                    .frame(width: percentWidth, alignment: .trailing)
-                    .opacity(isHovering ? 1 : 0)
-            }
-
-            outputButton
+            .frame(maxWidth: .infinity)
 
             Button(action: onToggleMute) {
                 Image(systemName: app.speakerSymbol)
@@ -119,6 +106,8 @@ struct AppRowView: View {
             .buttonStyle(.plain)
             .contentTransition(.symbolEffect(.replace))
             .help(app.isMuted ? "Включить звук" : "Заглушить")
+
+            outputButton
         }
         // Закреплённое, но закрытое приложение — бесцветная строка.
         // Обесцвечивается всё разом, вместе с заливкой слайдера: так сразу
@@ -164,10 +153,10 @@ struct AppRowView: View {
         }
     }
 
-    /// Кнопка выбора устройства. В покое её не видно — она нужна редко, а
-    /// строка должна оставаться чистой. Но у приложения, уведённого в другое
-    /// устройство, значок горит всегда: иначе о таком маршруте можно забыть
-    /// и потом долго искать, почему звук идёт не туда.
+    /// Кнопка выбора устройства. Видна всегда — иначе о ней надо знать
+    /// заранее. У приложения, уведённого в другое устройство, значок ещё и
+    /// горит акцентным цветом: о таком маршруте легко забыть и потом долго
+    /// искать, почему звук идёт не туда.
     private var outputButton: some View {
         OutputDeviceMenu(
             selectedUID: app.outputDeviceUID,
@@ -184,7 +173,6 @@ struct AppRowView: View {
                 .frame(width: outputSize, height: outputSize)
                 .contentShape(Rectangle())
         }
-        .opacity(isRouted || isHovering ? 1 : 0)
         .help(routedDevice.map { "Выход: \($0.name)" } ?? "Выбрать устройство вывода")
     }
 

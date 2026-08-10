@@ -31,6 +31,22 @@ func caCheck(_ status: OSStatus, _ context: @autoclosure () -> String) throws {
     guard status == noErr else { throw CAError.status(status, context()) }
 }
 
+// MARK: - Наши собственные устройства
+
+enum AudioMixerDevice {
+    /// Префикс UID приватных агрегатов, которые создаёт движок.
+    ///
+    /// `kAudioAggregateDeviceIsPrivateKey` прячет агрегат от ЧУЖИХ процессов,
+    /// но не от своего: в списке устройств собственного приложения он виден
+    /// и без фильтра предлагался бы пользователю как выход — то есть звук
+    /// можно было бы завернуть в нас же самих.
+    static let aggregateUIDPrefix = "com.example.AudioMixer.aggregate."
+
+    static func isOwnAggregate(uid: String) -> Bool {
+        uid.hasPrefix(aggregateUIDPrefix)
+    }
+}
+
 // MARK: - Описание свойства
 
 struct AudioProperty: Hashable {

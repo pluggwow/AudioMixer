@@ -314,7 +314,9 @@ final class AudioProcessTapEngine {
         let tapList = route.pids.compactMap { taps[$0] }
         guard !tapList.isEmpty else { return }
 
-        let uid = "com.example.AudioMixer.aggregate.\(UUID().uuidString)"
+        // Префикс общий с фильтром в AudioDeviceManager: по нему наши агрегаты
+        // отсеиваются из списка устройств вывода.
+        let uid = AudioMixerDevice.aggregateUIDPrefix + UUID().uuidString
         let description: [String: Any] = [
             kAudioAggregateDeviceNameKey: "AudioMixer",
             kAudioAggregateDeviceUIDKey: uid,

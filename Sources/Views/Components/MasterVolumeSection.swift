@@ -39,7 +39,10 @@ struct MasterVolumeSection: View {
                         }
                     ),
                     style: .system,
-                    isEnabled: systemVolume.isControllable && !systemVolume.isMuted
+                    isEnabled: systemVolume.isControllable && !systemVolume.isMuted,
+                    hoverLabel: systemVolume.isMuted
+                        ? "Выкл."
+                        : "\(Int((systemVolume.volume * 100).rounded()))%"
                 )
 
                 muteButton

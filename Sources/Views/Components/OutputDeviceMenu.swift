@@ -54,6 +54,9 @@ struct OutputDeviceMenu<Content: View>: View {
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
+        // Крупнее пункты в выпадающем списке: на мелких значках устройств
+        // сложно разобрать, где наушники, а где монитор.
+        .controlSize(.large)
         .modifier(FixedSizeIfNeeded(enabled: fixedSize))
         .disabled(availableDevices.isEmpty)
     }

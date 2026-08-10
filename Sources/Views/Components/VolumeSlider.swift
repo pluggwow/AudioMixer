@@ -2,9 +2,9 @@
 //  VolumeSlider.swift
 //  AudioMixer
 //
-//  Слайдер как в Control Center: тонкий капсульный трек, залитая часть
-//  акцентным цветом и круглая белая ручка. Системный Slider не подходит —
-//  у него другая метрика и обязательный «прыжок» ручки к курсору.
+//  Слайдер как в Control Center: тонкий капсульный трек, белая залитая часть
+//  и круглая ручка. Системный Slider не подходит — у него другая метрика и
+//  обязательный «прыжок» ручки к курсору.
 //
 
 import SwiftUI
@@ -24,11 +24,20 @@ struct VolumeSlider: View {
     @Binding var value: Float
     var style: Style = .system
     var isEnabled: Bool = true
-    var accentTint: Color = .accentColor
+    /// Цвет залитой части. nil — «как система»: белая на тёмной теме и тёмная
+    /// на светлой. Чистая белая на светлой теме сливается с треком, и понять,
+    /// где кончается заполнение, можно только по ручке.
+    var accentTint: Color?
+    /// Что показать в подсказке над курсором. nil — подсказки нет.
+    var hoverLabel: String?
     var onEditingChanged: ((Bool) -> Void)?
+
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var isDragging = false
     @State private var isHovering = false
+    /// Где именно курсор внутри слайдера — подсказка встаёт над этой точкой.
+    @State private var hoverX: CGFloat?
 
     /// Высота всей области — по ручке: она крупнее трека и определяет габарит.
     private var height: CGFloat { max(style.knobSize, style.trackHeight) }
@@ -47,6 +56,12 @@ struct VolumeSlider: View {
 
                 Capsule(style: .continuous)
                     .fill(fillStyle)
+                    // Обводка нужна на светлой теме: белая заливка на светлом
+                    // треке иначе сливается с ним.
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .strokeBorder(.black.opacity(0.06), lineWidth: 0.5)
+                    )
                     .frame(width: center, height: style.trackHeight)
 
                 knob
@@ -55,6 +70,7 @@ struct VolumeSlider: View {
             .frame(height: height)
             .frame(maxHeight: .infinity, alignment: .center)
             .contentShape(Rectangle())
+            .overlay { hoverBubble(knobCenter: center) }
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { gesture in
@@ -72,6 +88,14 @@ struct VolumeSlider: View {
                     }
             )
             .onHover { isHovering = $0 && isEnabled }
+            // Обычный onHover даёт только «внутри/снаружи», а подсказке нужна
+            // точка: она встаёт над курсором, а не над серединой слайдера.
+            .onContinuousHover { phase in
+                switch phase {
+                case .active(let location): hoverX = location.x
+                case .ended: hoverX = nil
+                }
+            }
             .opacity(isEnabled ? 1 : 0.4)
         }
         .frame(height: height)
@@ -87,11 +111,36 @@ struct VolumeSlider: View {
         }
     }
 
+    /// Подсказка с процентами. Во время перетаскивания держится за ручку:
+    /// курсор к тому моменту может уехать за пределы слайдера, а подсказка
+    /// должна оставаться там, где значение.
+    @ViewBuilder
+    private func hoverBubble(knobCenter: CGFloat) -> some View {
+        if let hoverLabel, let x = isDragging ? knobCenter : hoverX, isEnabled {
+            Text(hoverLabel)
+                .font(.system(size: 10, weight: .medium).monospacedDigit())
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
+                .background(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(.thickMaterial)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                .strokeBorder(.primary.opacity(0.08), lineWidth: 0.5)
+                        )
+                        .shadow(color: .black.opacity(0.2), radius: 3, y: 1)
+                )
+                .fixedSize()
+                .position(x: x, y: -height / 2 - 2)
+                .allowsHitTesting(false)
+                .transition(.opacity)
+        }
+    }
+
     private var knob: some View {
         Circle()
             .fill(.white)
-            // Обводка нужна на светлой теме: белая ручка на светлом треке
-            // иначе теряет край.
             .overlay(Circle().strokeBorder(.black.opacity(0.08), lineWidth: 0.5))
             .shadow(color: .black.opacity(0.22), radius: 1.5, y: 0.5)
             .frame(width: style.knobSize, height: style.knobSize)
@@ -102,8 +151,13 @@ struct VolumeSlider: View {
 
     private var fillStyle: AnyShapeStyle {
         isEnabled
-            ? AnyShapeStyle(accentTint)
+            ? AnyShapeStyle(resolvedTint)
             : AnyShapeStyle(Color.secondary.opacity(0.4))
+    }
+
+    private var resolvedTint: Color {
+        if let accentTint { return accentTint }
+        return colorScheme == .dark ? .white : Color.primary.opacity(0.75)
     }
 
     private func update(location: CGFloat, travel: CGFloat) {

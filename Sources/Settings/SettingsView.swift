@@ -25,7 +25,6 @@ struct SettingsView: View {
                 .tabItem { Label("Приложения", systemImage: "square.grid.2x2") }
         }
         .frame(width: 480, height: 360)
-        .background(WindowAppearance(appearance: settings.appearanceMode.nsAppearance))
     }
 }
 
@@ -202,39 +201,6 @@ struct ApplicationsSettingsView: View {
                 }
                 .padding(10)
             }
-        }
-    }
-}
-
-
-/// Проставляет тему окну, в котором лежит, — единственным способом на всё
-/// приложение.
-///
-/// Окну, а не всему приложению через `NSApp.appearance`: тот заодно перекрасил
-/// бы значок в строке меню, а он должен следовать за строкой меню, а не за
-/// нашей настройкой.
-///
-/// И вместо `preferredColorScheme`, а не вместе с ним. Тот красит содержимое
-/// в обход окна, и получалось двоевластие: рамка следовала за системой,
-/// содержимое — за оставшимся override. При возврате на «Системную» тема
-/// менялась не сразу, а только при следующем внешнем событии — например, при
-/// переключении между приложениями.
-struct WindowAppearance: NSViewRepresentable {
-
-    let appearance: NSAppearance?
-
-    func makeNSView(context: Context) -> NSView { NSView() }
-
-    func updateNSView(_ view: NSView, context: Context) {
-        // На следующем витке цикла: во время обновления вью окна у неё ещё нет.
-        DispatchQueue.main.async {
-            guard let window = view.window,
-                  window.appearance?.name != appearance?.name else { return }
-
-            window.appearance = appearance
-            // Содержимое должно наследовать тему у окна, а не держать свою:
-            // иначе оно так и останется в прежней.
-            window.contentView?.appearance = nil
         }
     }
 }

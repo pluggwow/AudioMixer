@@ -93,7 +93,6 @@ struct MixerRootView: View {
             }
             .allowsHitTesting(false)
         }
-        .background(WindowAppearance(appearance: settings.appearanceMode.nsAppearance))
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: viewModel.apps)
         .animation(.easeInOut(duration: 0.2), value: viewModel.permissionStatus)
     }

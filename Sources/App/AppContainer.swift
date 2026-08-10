@@ -35,6 +35,7 @@ final class AppContainer: ObservableObject {
 
     func start() {
         settings.applyActivationPolicy()
+        settings.applyAppearance()
         settings.syncLoginItem()
         mixerViewModel.start()
     }

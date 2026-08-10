@@ -51,7 +51,9 @@ final class SettingsStore: ObservableObject {
     @AppStorage("showVolumePercentage") var showVolumePercentage: Bool = true
     @AppStorage("defaultVolume") var defaultVolume: Double = 1.0
     @AppStorage("rememberAppVolumes") var rememberAppVolumes: Bool = true
-    @AppStorage("appearanceMode") var appearanceModeRaw: String = AppearanceMode.system.rawValue
+    @AppStorage("appearanceMode") var appearanceModeRaw: String = AppearanceMode.system.rawValue {
+        didSet { applyAppearance() }
+    }
     @AppStorage("showAppIcons") var showAppIcons: Bool = true
     @AppStorage("sliderStyle") var sliderStyleRaw: String = SliderStyleOption.capsule.rawValue
     @AppStorage("launchAtLogin") var launchAtLoginPreference: Bool = false
@@ -64,6 +66,17 @@ final class SettingsStore: ObservableObject {
     var sliderStyle: SliderStyleOption {
         get { SliderStyleOption(rawValue: sliderStyleRaw) ?? .capsule }
         set { sliderStyleRaw = newValue.rawValue }
+    }
+
+    /// Тема задаётся приложению целиком.
+    ///
+    /// Не через `preferredColorScheme` и не покраской окон из вью: и то и
+    /// другое применялось не в момент переключения, а только при следующем
+    /// внешнем событии — например, когда пользователь переключался между
+    /// приложениями. `NSApp.appearance` вступает в силу сразу и покрывает
+    /// заодно рамку окна настроек, до которой SwiftUI-схема не достаёт.
+    func applyAppearance() {
+        NSApp.appearance = appearanceMode.nsAppearance
     }
 
     func applyActivationPolicy() {

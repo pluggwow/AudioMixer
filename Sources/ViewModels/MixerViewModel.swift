@@ -457,7 +457,8 @@ final class MixerViewModel: ObservableObject {
                 pid: $0.pid,
                 volume: $0.volume,
                 isMuted: $0.isMuted,
-                outputUID: $0.outputDeviceUID
+                outputUID: $0.outputDeviceUID,
+                isPlaying: $0.isPlaying
             )
         }
         engine.apply(levels: levels)

@@ -51,6 +51,8 @@ final class AudioProcessTapEngine {
         var isMuted: Bool
         /// UID устройства вывода. nil — то, что выбрано в системе.
         var outputUID: String?
+        /// Приложение прямо сейчас выводит звук.
+        var isPlaying: Bool = false
 
         var effectiveGain: Float { isMuted ? 0 : max(0, min(volume, 1)) }
 
@@ -170,12 +172,26 @@ final class AudioProcessTapEngine {
         }
     }
 
+    /// Кому нужен тапп прямо сейчас.
+    ///
+    /// Кроме тех, кому он нужен по сути, сюда попадают те, у кого он УЖЕ есть
+    /// и кто прямо сейчас звучит. Снятие таппа переключает приложение с нашего
+    /// рендера обратно на родной выход, и этот переход слышен разрывом —
+    /// именно он и рвал звук при возврате громкости на 100%. Поэтому тапп
+    /// держится до тишины: в тишине переключение никто не услышит.
+    private func requiredLevelsUnsafe(_ levels: [Level]) -> [Level] {
+        let defaultUID = outputDeviceUID
+        return levels.filter { level in
+            level.requiresTap(default: defaultUID) || (taps[level.pid] != nil && level.isPlaying)
+        }
+    }
+
     /// Есть ли изменение, которое нельзя откладывать: новый тапп или переезд
     /// приложения на другое устройство. И то и другое — прямое действие
     /// пользователя, результат которого он ждёт сейчас, а не через 150 мс.
     private func needsImmediateApplyUnsafe(levels: [Level]) -> Bool {
         let defaultUID = outputDeviceUID
-        let required = levels.filter { $0.requiresTap(default: defaultUID) }
+        let required = requiredLevelsUnsafe(levels)
 
         if required.contains(where: { taps[$0.pid] == nil && !tapFailures.contains($0.pid) }) {
             return true
@@ -217,7 +233,7 @@ final class AudioProcessTapEngine {
         lastLevels = levels
 
         let defaultUID = outputDeviceUID
-        let required = levels.filter { $0.requiresTap(default: defaultUID) }
+        let required = requiredLevelsUnsafe(levels)
 
         // Кого куда вести. Порядок внутри маршрута — порядок уровней.
         var wanted: [String: [pid_t]] = [:]

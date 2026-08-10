@@ -32,16 +32,21 @@ struct AppListView: View {
     let onDragBegan: () -> Void
     let onDragEnded: () -> Void
 
-    /// Высота строки до того, как она измерена. Ею же панель считает свою
-    /// высоту, поэтому константа живёт здесь одна на оба места.
-    static func estimatedRowHeight(compact: Bool) -> CGFloat { compact ? 56 : 72 }
+    /// Высота строки. Строка задаёт её сама (`AppRowView.height`), поэтому
+    /// значение точное, а не оценочное: по нему и панель считает свой размер,
+    /// и перетаскивание — шаг сетки.
+    static func estimatedRowHeight(compact: Bool) -> CGFloat {
+        AppRowView.height(compact: compact)
+    }
 
     /// Система координат видимой области. Задаётся снаружи, на ScrollView:
     /// позиция курсора нужна относительно окна списка, а не относительно
     /// содержимого, которое во время автопрокрутки едет само.
     static let viewportSpace = "mixerAppListViewport"
 
-    private static let spacing: CGFloat = 2
+    /// Зазор между строками. Панель учитывает его в своей высоте, поэтому
+    /// значение общее, а не спрятанное внутри.
+    static let rowSpacing: CGFloat = 2
     /// Ширина краевой полосы, в которой начинается автопрокрутка.
     private static let autoScrollEdge: CGFloat = 26
     private static let autoScrollTick: Duration = .milliseconds(130)
@@ -56,7 +61,7 @@ struct AppListView: View {
     @State private var autoScrollTask: Task<Void, Never>?
 
     var body: some View {
-        LazyVStack(spacing: Self.spacing) {
+        LazyVStack(spacing: Self.rowSpacing) {
             ForEach(Array(apps.enumerated()), id: \.element.bundleID) { index, app in
                 row(app, at: index)
             }
@@ -109,7 +114,7 @@ struct AppListView: View {
         let height = measuredRowHeight > 0
             ? measuredRowHeight
             : Self.estimatedRowHeight(compact: compact)
-        return height + Self.spacing
+        return height + Self.rowSpacing
     }
 
     private var draggedIndex: Int? {

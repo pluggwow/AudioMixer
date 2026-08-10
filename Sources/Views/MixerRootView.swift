@@ -2,8 +2,16 @@
 //  MixerRootView.swift
 //  AudioMixer
 //
-//  Главная панель из Menu Bar. Стилистика — Control Center:
-//  узкая колонка, крупные скругления, материал вместо плотной заливки.
+//  Главная панель из Menu Bar, собранная по образцу системной панели «Звук»
+//  из Control Center: заголовок, один слайдер, секция «Выход», список
+//  приложений. Материал вместо плотной заливки, системная типографика,
+//  разделители между секциями.
+//
+//  Компоновок две:
+//    B (по умолчанию) — «Выход» отдельной секцией под слайдером;
+//    A (компактный режим) — выбор устройства кнопкой в строке слайдера.
+//  Вариант B нативнее: он повторяет раскладку самой панели «Звук», где
+//  устройство — не иконка, а строка с именем.
 //
 
 import SwiftUI
@@ -15,18 +23,39 @@ struct MixerRootView: View {
 
     @Environment(\.openSettings) private var openSettings
 
-    private let panelWidth: CGFloat = 380
+    /// Чуть шире системной панели «Звук»: там одна строка устройства, а у нас
+    /// в строке ещё слайдер, проценты и mute — на 340 pt название приложения
+    /// начинало резаться на середине.
+    private let panelWidth: CGFloat = 360
+    private let sidePadding: CGFloat = 14
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 0) {
 
             MasterVolumeSection(
                 systemVolume: viewModel.systemVolume,
+                compact: settings.compactMode,
                 device: viewModel.outputDevice,
                 availableDevices: viewModel.availableDevices,
-                showPercentage: settings.showVolumePercentage,
                 onSelectDevice: { viewModel.selectOutputDevice($0) }
             )
+            .padding(.horizontal, sidePadding)
+            .padding(.top, 12)
+            .padding(.bottom, 10)
+
+            // В компактном режиме устройство уже показано кнопкой в строке
+            // слайдера — отдельная секция была бы повтором.
+            if !settings.compactMode {
+                separator
+
+                OutputDeviceSection(
+                    device: viewModel.outputDevice,
+                    availableDevices: viewModel.availableDevices,
+                    onSelect: { viewModel.selectOutputDevice($0) }
+                )
+                .padding(.horizontal, sidePadding)
+                .padding(.vertical, 8)
+            }
 
             if shouldShowPermissionBanner {
                 PermissionBanner(
@@ -34,28 +63,42 @@ struct MixerRootView: View {
                     onOpenSettings: { viewModel.openPermissionSettings() },
                     onRecheck: { viewModel.recheckPermissions() }
                 )
+                .padding(.horizontal, sidePadding)
+                .padding(.bottom, 8)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
             if case .failed(let message) = viewModel.engineState {
                 EngineErrorBanner(message: message)
+                    .padding(.horizontal, sidePadding)
+                    .padding(.bottom, 8)
                     .transition(.opacity)
             }
 
-            Divider().opacity(0.5)
+            separator
 
             appsSection
+                .padding(.horizontal, sidePadding)
+                .padding(.top, 8)
+                .padding(.bottom, 6)
 
-            Divider().opacity(0.5)
+            separator
 
             footer
+                .padding(.horizontal, sidePadding)
+                .padding(.vertical, 8)
         }
-        .padding(14)
         .frame(width: panelWidth)
         .background(.ultraThinMaterial)
         .preferredColorScheme(settings.appearanceMode.colorScheme)
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: viewModel.apps)
         .animation(.easeInOut(duration: 0.2), value: viewModel.permissionStatus)
+    }
+
+    /// Разделитель с отступами от краёв — как между блоками Control Center.
+    private var separator: some View {
+        Divider()
+            .padding(.horizontal, sidePadding)
     }
 
     private var shouldShowPermissionBanner: Bool {
@@ -69,16 +112,20 @@ struct MixerRootView: View {
     // MARK: - Список приложений
 
     private var appsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
                 Text("Приложения")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+
                 Spacer()
+
                 if case .active(let count) = viewModel.engineState, count > 0 {
                     Text("\(count) активн.")
-                        .font(.system(size: 12))
+                        .font(.system(size: 10))
                         .foregroundStyle(.tertiary)
                 }
+
                 // Кнопка появляется только когда порядок задан вручную —
                 // иначе непонятно, что именно она сбрасывает.
                 if viewModel.hasCustomOrder {
@@ -88,7 +135,7 @@ struct MixerRootView: View {
                         }
                     } label: {
                         Image(systemName: "arrow.uturn.backward")
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.system(size: 10, weight: .medium))
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -142,9 +189,11 @@ struct MixerRootView: View {
 
     private var scrollHeight: CGFloat {
         let rowHeight = AppListView.estimatedRowHeight(compact: settings.compactMode)
-        let count = CGFloat(viewModel.apps.count)
-        // Потолок ~6 строк: дальше панель становится выше экрана.
-        return min(count * rowHeight, rowHeight * 6)
+        let spacing = AppListView.rowSpacing
+        // Потолок восемь строк: дальше панель перестаёт быть компактной.
+        let visible = CGFloat(min(viewModel.apps.count, 8))
+        guard visible > 0 else { return 0 }
+        return visible * rowHeight + (visible - 1) * spacing
     }
 
     // MARK: - Подвал
@@ -171,15 +220,7 @@ struct MixerRootView: View {
 
     private var footer: some View {
         HStack(spacing: 4) {
-            Button(action: openSettingsWindow) {
-                Label("Настройки", systemImage: "gearshape")
-                    .font(.system(size: 13))
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .onHover { hovering in
-                if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
-            }
+            FooterButton(title: "Настройки…", action: openSettingsWindow)
 
             Spacer()
 
@@ -188,13 +229,40 @@ struct MixerRootView: View {
                 NSApp.terminate(nil)
             } label: {
                 Image(systemName: "power")
-                    .font(.system(size: 13))
-                    .frame(width: 28, height: 28)
+                    .font(.system(size: 12))
+                    .frame(width: 22, height: 22)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
             .help("Завершить AudioMixer")
         }
-        .foregroundStyle(.secondary)
+    }
+}
+
+/// Строка-ссылка внизу панели — как «Настройки звука…» в системной.
+private struct FooterButton: View {
+
+    let title: String
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 12))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .contentShape(Rectangle())
+                .background(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(.primary.opacity(isHovering ? 0.07 : 0))
+                )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeOut(duration: 0.12)) { isHovering = hovering }
+        }
     }
 }

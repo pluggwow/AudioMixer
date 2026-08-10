@@ -113,6 +113,7 @@ struct AppearanceSettingsView: View {
 
             Section {
                 Toggle("Компактный режим", isOn: $settings.compactMode)
+                    .help("Строки ниже, а устройство вывода — кнопкой в строке громкости вместо отдельной секции")
                 Toggle("Показывать иконки приложений", isOn: $settings.showAppIcons)
                 Picker("Стиль слайдера", selection: Binding(
                     get: { settings.sliderStyle },

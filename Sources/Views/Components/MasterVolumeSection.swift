@@ -2,34 +2,37 @@
 //  MasterVolumeSection.swift
 //  AudioMixer
 //
+//  Верх панели: заголовок «Звук» и один слайдер между двумя динамиками —
+//  ровно как в системной панели Control Center.
+//
 
 import SwiftUI
 
 struct MasterVolumeSection: View {
 
     @ObservedObject var systemVolume: SystemVolumeController
+
+    /// Ultra-compact режим (вариант A): выбор устройства уезжает сюда же,
+    /// в строку со слайдером, и отдельная секция «Выход» не показывается.
+    let compact: Bool
     let device: AudioDeviceInfo?
     let availableDevices: [AudioDeviceInfo]
-    let showPercentage: Bool
     let onSelectDevice: (AudioDeviceInfo) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
-                Text("Громкость")
-                    .font(.system(size: 14, weight: .semibold))
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Звук")
+                .font(.system(size: 13, weight: .semibold))
 
-                Spacer()
+            HStack(spacing: 8) {
+                // Слева тихий динамик, справа громкий — как в системной панели.
+                // Отличие одно: правый ещё и выключает звук, иначе mute
+                // пришлось бы вешать на лишний элемент.
+                Image(systemName: "speaker.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 14)
 
-                if showPercentage {
-                    Text(systemVolume.isMuted ? "Выкл." : "\(Int((systemVolume.volume * 100).rounded()))%")
-                        .font(.system(size: 13, weight: .medium).monospacedDigit())
-                        .foregroundStyle(.secondary)
-                        .contentTransition(.numericText())
-                }
-            }
-
-            HStack(spacing: 10) {
                 VolumeSlider(
                     value: Binding(
                         get: { systemVolume.isMuted ? 0 : systemVolume.volume },
@@ -38,27 +41,26 @@ struct MasterVolumeSection: View {
                             systemVolume.volume = newValue
                         }
                     ),
-                    style: .prominent,
-                    symbolName: "speaker.fill",
-                    isEnabled: systemVolume.isControllable && !systemVolume.isMuted,
-                    accentTint: .white
+                    style: .system,
+                    isEnabled: systemVolume.isControllable && !systemVolume.isMuted
                 )
 
-                Button {
-                    systemVolume.toggleMute()
-                } label: {
-                    Image(systemName: systemVolume.symbolName)
-                        .font(.system(size: 13, weight: .medium))
-                        .frame(width: 28, height: 28)
-                        .contentShape(Rectangle())
+                muteButton
+
+                if compact {
+                    OutputDeviceMenu(
+                        device: device,
+                        availableDevices: availableDevices,
+                        onSelect: onSelectDevice
+                    ) {
+                        Image(systemName: "airplayaudio")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 22, height: 22)
+                            .contentShape(Rectangle())
+                    }
+                    .help("Устройство вывода")
                 }
-                .buttonStyle(.plain)
-                .contentTransition(.symbolEffect(.replace))
-                .disabled(!systemVolume.isMuteSupported)
-                .opacity(systemVolume.isMuteSupported ? 1 : 0.4)
-                .help(systemVolume.isMuteSupported
-                      ? (systemVolume.isMuted ? "Включить звук" : "Заглушить")
-                      : "Устройство не поддерживает программное отключение звука")
             }
 
             if !systemVolume.isControllable {
@@ -66,42 +68,25 @@ struct MasterVolumeSection: View {
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
             }
-
-            deviceMenu
         }
     }
 
-    private var deviceMenu: some View {
-        Menu {
-            ForEach(availableDevices) { candidate in
-                Button {
-                    onSelectDevice(candidate)
-                } label: {
-                    HStack {
-                        Image(systemName: candidate.symbolName)
-                        Text(candidate.name)
-                        if candidate.uid == device?.uid {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-            }
+    private var muteButton: some View {
+        Button {
+            systemVolume.toggleMute()
         } label: {
-            HStack(spacing: 6) {
-                Image(systemName: device?.symbolName ?? "speaker.slash")
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
-                Text(device?.name ?? "Нет устройства вывода")
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 8, weight: .semibold))
-                    .foregroundStyle(.tertiary)
-            }
+            Image(systemName: systemVolume.symbolName)
+                .font(.system(size: 12))
+                .foregroundStyle(systemVolume.isMuted ? Color.secondary : Color.primary)
+                .frame(width: 16, height: 16)
+                .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
+        .buttonStyle(.plain)
+        .contentTransition(.symbolEffect(.replace))
+        .disabled(!systemVolume.isMuteSupported)
+        .opacity(systemVolume.isMuteSupported ? 1 : 0.4)
+        .help(systemVolume.isMuteSupported
+              ? (systemVolume.isMuted ? "Включить звук" : "Заглушить")
+              : "Устройство не поддерживает программное отключение звука")
     }
 }

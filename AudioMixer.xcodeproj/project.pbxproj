@@ -29,6 +29,7 @@
 		68E8C8D0F58E12146BECCE8A /* MasterVolumeSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = F57BE6D30AC2AA5FA1152467 /* MasterVolumeSection.swift */; };
 		83BC8843F8FEBC351E35928D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 308E8BD77A229B614B6F4696 /* AppDelegate.swift */; };
 		85AA62D1CDD15540CE5B1625 /* ServiceManagement.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 49C5B53B91BD4BBEC37598FF /* ServiceManagement.framework */; };
+		930C081F2F55BE60D5D81708 /* OutputDeviceSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB18FF6A5FFF36F9A277252A /* OutputDeviceSection.swift */; };
 		BAE08FD32469E87C8234D87F /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC96038FFDF693487FAB7CE7 /* AppContainer.swift */; };
 		C3CCAB6F9FB9DD285ED2E590 /* PermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04B79B2F51B2AC2319692757 /* PermissionManager.swift */; };
 		C88AC38B120737C8C09B46D8 /* AudioMixerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 792AF0CBB112264987BF147D /* AudioMixerApp.swift */; };
@@ -65,6 +66,7 @@
 		B713626901BEB65900D028B3 /* AudioDeviceInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDeviceInfo.swift; sourceTree = "<group>"; };
 		BF8395A6CFA1A3E3DA9E8B51 /* AudioAppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioAppState.swift; sourceTree = "<group>"; };
 		C047CF76CFDC440706C2CD3E /* RenderState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderState.swift; sourceTree = "<group>"; };
+		CB18FF6A5FFF36F9A277252A /* OutputDeviceSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputDeviceSection.swift; sourceTree = "<group>"; };
 		D06139F4C4128007CF28B762 /* AudioMixer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AudioMixer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DC96038FFDF693487FAB7CE7 /* AppContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppContainer.swift; sourceTree = "<group>"; };
 		DD1D0B4A9A402B2079829388 /* AudioProcessTapEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioProcessTapEngine.swift; sourceTree = "<group>"; };
@@ -197,6 +199,7 @@
 				2A469DA70067B7D58F6496EF /* AppListView.swift */,
 				A66C67512A32AB272CAA5857 /* AppRowView.swift */,
 				F57BE6D30AC2AA5FA1152467 /* MasterVolumeSection.swift */,
+				CB18FF6A5FFF36F9A277252A /* OutputDeviceSection.swift */,
 				08396B1F3C32248EB1D1C4DA /* StatusBanner.swift */,
 				0FDFD0758F5713FE7D579E4B /* VolumeSlider.swift */,
 			);
@@ -287,6 +290,7 @@
 				68E8C8D0F58E12146BECCE8A /* MasterVolumeSection.swift in Sources */,
 				2E8BD1A95E24226BD222274E /* MixerRootView.swift in Sources */,
 				537AD556AB642AF8B0FD0321 /* MixerViewModel.swift in Sources */,
+				930C081F2F55BE60D5D81708 /* OutputDeviceSection.swift in Sources */,
 				C3CCAB6F9FB9DD285ED2E590 /* PermissionManager.swift in Sources */,
 				17CA0DF29CCE65EC4317B1C5 /* RenderState.swift in Sources */,
 				409A8872F7B15ABB6E753993 /* SettingsStore.swift in Sources */,

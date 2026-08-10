@@ -2,8 +2,9 @@
 //  VolumeSlider.swift
 //  AudioMixer
 //
-//  Слайдер в стиле Control Center. Системный Slider не подходит:
-//  нужен капсульный трек с иконкой внутри и клик-в-точку без «прыжка» ручки.
+//  Слайдер как в Control Center: тонкий капсульный трек, залитая часть
+//  акцентным цветом и круглая белая ручка. Системный Slider не подходит —
+//  у него другая метрика и обязательный «прыжок» ручки к курсору.
 //
 
 import SwiftUI
@@ -11,70 +12,58 @@ import SwiftUI
 struct VolumeSlider: View {
 
     enum Style {
-        case prominent   // толстый, с иконкой внутри — для Master
-        case compact     // тонкий — для строк приложений
+        /// Мастер-громкость: крупная ручка, как в системной панели «Звук».
+        case system
+        /// Строка приложения: та же геометрия, но мельче.
+        case systemSmall
 
-        var height: CGFloat {
-            switch self {
-            case .prominent: return 28
-            case .compact:   return 20
-            }
-        }
+        var trackHeight: CGFloat { self == .system ? 6 : 4 }
+        var knobSize: CGFloat { self == .system ? 18 : 13 }
     }
 
     @Binding var value: Float
-    var style: Style = .compact
-    var symbolName: String?
+    var style: Style = .system
     var isEnabled: Bool = true
-    var accentTint: Color = .primary
+    var accentTint: Color = .accentColor
     var onEditingChanged: ((Bool) -> Void)?
 
     @State private var isDragging = false
     @State private var isHovering = false
 
+    /// Высота всей области — по ручке: она крупнее трека и определяет габарит.
+    private var height: CGFloat { max(style.knobSize, style.trackHeight) }
+
     var body: some View {
         GeometryReader { geometry in
-            let width = geometry.size.width
-            let height = style.height
-            let fill = max(height, CGFloat(clamped) * width)
+            // Ручка не должна вылезать за края трека, поэтому ход её центра
+            // короче ширины на диаметр — как у системного слайдера.
+            let travel = max(geometry.size.width - style.knobSize, 1)
+            let center = style.knobSize / 2 + CGFloat(clamped) * travel
 
             ZStack(alignment: .leading) {
                 Capsule(style: .continuous)
                     .fill(.quaternary)
-                    .overlay(
-                        Capsule(style: .continuous)
-                            .strokeBorder(.white.opacity(0.06), lineWidth: 0.5)
-                    )
+                    .frame(height: style.trackHeight)
 
                 Capsule(style: .continuous)
                     .fill(fillStyle)
-                    .frame(width: fill)
-                    .shadow(color: .black.opacity(isDragging ? 0.18 : 0.10), radius: 3, y: 1)
+                    .frame(width: center, height: style.trackHeight)
 
-                if let symbolName, style == .prominent {
-                    Image(systemName: symbolName)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.black.opacity(0.55))
-                        .blendMode(.plusDarker)
-                        .frame(width: height, height: height)
-                        .allowsHitTesting(false)
-                }
+                knob
+                    .offset(x: center - style.knobSize / 2)
             }
             .frame(height: height)
             .frame(maxHeight: .infinity, alignment: .center)
             .contentShape(Rectangle())
-            .scaleEffect(y: isDragging ? 1.12 : (isHovering ? 1.05 : 1.0), anchor: .center)
-            .animation(.spring(response: 0.28, dampingFraction: 0.7), value: isDragging)
-            .animation(.spring(response: 0.28, dampingFraction: 0.7), value: isHovering)
             .gesture(
                 DragGesture(minimumDistance: 0)
-                    .onChanged { gestureValue in
+                    .onChanged { gesture in
                         guard isEnabled else { return }
                         if !isDragging {
                             isDragging = true
                             onEditingChanged?(true)
                         }
-                        update(location: gestureValue.location.x, width: width)
+                        update(location: gesture.location.x, travel: travel)
                     }
                     .onEnded { _ in
                         guard isEnabled else { return }
@@ -85,7 +74,8 @@ struct VolumeSlider: View {
             .onHover { isHovering = $0 && isEnabled }
             .opacity(isEnabled ? 1 : 0.4)
         }
-        .frame(height: style.height)
+        .frame(height: height)
+        .animation(.spring(response: 0.25, dampingFraction: 0.8), value: isDragging)
         .accessibilityElement()
         .accessibilityValue(Text("\(Int(clamped * 100)) процентов"))
         .accessibilityAdjustableAction { direction in
@@ -97,17 +87,28 @@ struct VolumeSlider: View {
         }
     }
 
+    private var knob: some View {
+        Circle()
+            .fill(.white)
+            // Обводка нужна на светлой теме: белая ручка на светлом треке
+            // иначе теряет край.
+            .overlay(Circle().strokeBorder(.black.opacity(0.08), lineWidth: 0.5))
+            .shadow(color: .black.opacity(0.22), radius: 1.5, y: 0.5)
+            .frame(width: style.knobSize, height: style.knobSize)
+            .scaleEffect(isDragging ? 1.12 : (isHovering ? 1.05 : 1))
+    }
+
     private var clamped: Float { max(0, min(value, 1)) }
 
     private var fillStyle: AnyShapeStyle {
         isEnabled
-            ? AnyShapeStyle(accentTint.opacity(0.92))
+            ? AnyShapeStyle(accentTint)
             : AnyShapeStyle(Color.secondary.opacity(0.4))
     }
 
-    private func update(location: CGFloat, width: CGFloat) {
-        guard width > 0 else { return }
-        let newValue = Float(max(0, min(location / width, 1)))
+    private func update(location: CGFloat, travel: CGFloat) {
+        // Курсор задаёт положение центра ручки, а не левого края заливки.
+        let newValue = Float(max(0, min((location - style.knobSize / 2) / travel, 1)))
         guard abs(newValue - value) > 0.0005 else { return }
         value = newValue
     }

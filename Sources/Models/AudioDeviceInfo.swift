@@ -44,10 +44,15 @@ struct AudioDeviceInfo: Identifiable, Hashable {
     }
 
     /// SF Symbol, подходящий типу подключения — как в Control Center.
+    ///
+    /// У Bluetooth тип подключения не говорит, наушники это или колонка,
+    /// поэтому для гарнитур Apple значок уточняется по имени: система
+    /// показывает именно их силуэт, и обобщённый значок сразу выдал бы
+    /// стороннее приложение.
     var symbolName: String {
         switch transportType {
         case kAudioDeviceTransportTypeBluetooth, kAudioDeviceTransportTypeBluetoothLE:
-            return "airpods"
+            return bluetoothSymbolName
         case kAudioDeviceTransportTypeUSB:
             return "hifispeaker"
         case kAudioDeviceTransportTypeHDMI, kAudioDeviceTransportTypeDisplayPort:
@@ -59,5 +64,14 @@ struct AudioDeviceInfo: Identifiable, Hashable {
         default:
             return "speaker.wave.2"
         }
+    }
+
+    private var bluetoothSymbolName: String {
+        let lowercased = name.lowercased()
+        if lowercased.contains("airpods max") { return "airpodsmax" }
+        if lowercased.contains("airpods pro") { return "airpodspro" }
+        if lowercased.contains("airpods") { return "airpods" }
+        if lowercased.contains("beats") { return "beats.headphones" }
+        return "headphones"
     }
 }

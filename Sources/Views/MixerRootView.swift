@@ -72,6 +72,18 @@ struct MixerRootView: View {
         }
         .frame(width: panelWidth)
         .background(.ultraThinMaterial)
+        // Подсказка со значением рисуется здесь, поверх всего: внутри списка
+        // её обрезал бы ScrollView, а внутри строки не хватает высоты.
+        .overlayPreferenceValue(SliderValueTipKey.self) { tip in
+            GeometryReader { proxy in
+                if let tip {
+                    let point = proxy[tip.anchor]
+                    SliderValueBubble(text: tip.text)
+                        .position(x: point.x, y: point.y - 12)
+                }
+            }
+            .allowsHitTesting(false)
+        }
         .preferredColorScheme(settings.appearanceMode.colorScheme)
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: viewModel.apps)
         .animation(.easeInOut(duration: 0.2), value: viewModel.permissionStatus)
@@ -173,13 +185,12 @@ struct MixerRootView: View {
     }
 
     private var scrollHeight: CGFloat {
-        let rowHeight = AppListView.rowHeight
-        let spacing = AppListView.rowSpacing
-        // Потолок десять строк: строки низкие, столько ещё помещается,
-        // не превращая панель в простыню.
-        let visible = CGFloat(min(viewModel.apps.count, 10))
+        let step = AppListView.rowHeight + AppListView.rowSpacing
+        // Четыре с половиной строки: половина пятой сразу говорит, что список
+        // продолжается, — без неё непонятно, что панель вообще прокручивается.
+        let visible = min(CGFloat(viewModel.apps.count), 4.5)
         guard visible > 0 else { return 0 }
-        return visible * rowHeight + (visible - 1) * spacing
+        return visible * step - AppListView.rowSpacing
     }
 
     // MARK: - Подвал

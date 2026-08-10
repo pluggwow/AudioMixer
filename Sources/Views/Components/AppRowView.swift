@@ -34,17 +34,17 @@ struct AppRowView: View {
 
     /// Высота строки задаётся, а не выводится из содержимого: по ней панель
     /// считает свой размер, а перетаскивание — шаг сетки.
-    static let height: CGFloat = 28
+    static let height: CGFloat = 38
 
-    private let iconSize: CGFloat = 18
+    private let iconSize: CGFloat = 22
     /// Проценты уехали в подсказку над курсором, поэтому справа от слайдера
     /// больше ничего не появляется — слайдер тянется на всю оставшуюся ширину.
     /// Фиксировано теперь название: иначе слайдеры соседних строк разъехались
     /// бы по вертикали вслед за длиной имени.
-    private let nameWidth: CGFloat = 96
-    private let muteSize: CGFloat = 16
-    private let outputSize: CGFloat = 16
-    private let spacing: CGFloat = 6
+    private let nameWidth: CGFloat = 104
+    private let muteSize: CGFloat = 18
+    private let outputSize: CGFloat = 18
+    private let spacing: CGFloat = 7
 
     /// Устройство, в которое уведено приложение. nil — звучит как все.
     private var routedDevice: AudioDeviceInfo? {
@@ -63,14 +63,14 @@ struct AppRowView: View {
 
             HStack(spacing: 3) {
                 Text(app.name)
-                    .font(.system(size: 11))
+                    .font(.system(size: 12))
                     .foregroundStyle(app.isSilent ? .secondary : .primary)
                     .lineLimit(1)
                     .truncationMode(.tail)
 
                 if app.isPinned {
                     Image(systemName: "pin.fill")
-                        .font(.system(size: 8))
+                        .font(.system(size: 9))
                         .foregroundStyle(.tertiary)
                 }
 
@@ -98,7 +98,7 @@ struct AppRowView: View {
 
             Button(action: onToggleMute) {
                 Image(systemName: app.speakerSymbol)
-                    .font(.system(size: 10))
+                    .font(.system(size: 11))
                     .foregroundStyle(app.isSilent ? Color.secondary : Color.primary)
                     .frame(width: muteSize, height: muteSize)
                     .contentShape(Rectangle())
@@ -168,7 +168,7 @@ struct AppRowView: View {
             // Значок устройства, если оно известно; если приложение уведено на
             // устройство, которого сейчас нет в системе, — общий значок вывода.
             Image(systemName: routedDevice?.symbolName ?? "airplayaudio")
-                .font(.system(size: 10))
+                .font(.system(size: 11))
                 .foregroundStyle(isRouted ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.secondary))
                 .frame(width: outputSize, height: outputSize)
                 .contentShape(Rectangle())

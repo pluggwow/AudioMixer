@@ -70,7 +70,14 @@ struct VolumeSlider: View {
             .frame(height: height)
             .frame(maxHeight: .infinity, alignment: .center)
             .contentShape(Rectangle())
-            .overlay { hoverBubble(knobCenter: center) }
+            // Подсказку рисует не слайдер, а панель: изнутри списка она
+            // упиралась бы в край прокручиваемой области и обрезалась —
+            // ровно это и происходило у самой верхней строки.
+            .anchorPreference(key: SliderValueTipKey.self,
+                              value: .point(CGPoint(x: center, y: 0))) { anchor in
+                guard let hoverLabel, isEnabled, showsTip(knobCenter: center) else { return nil }
+                return SliderValueTip(text: hoverLabel, anchor: anchor)
+            }
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { gesture in
@@ -111,33 +118,6 @@ struct VolumeSlider: View {
         }
     }
 
-    /// Подсказка с процентами. Во время перетаскивания держится за ручку:
-    /// курсор к тому моменту может уехать за пределы слайдера, а подсказка
-    /// должна оставаться там, где значение.
-    @ViewBuilder
-    private func hoverBubble(knobCenter: CGFloat) -> some View {
-        if let hoverLabel, let x = isDragging ? knobCenter : hoverX, isEnabled {
-            Text(hoverLabel)
-                .font(.system(size: 10, weight: .medium).monospacedDigit())
-                .foregroundStyle(.primary)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 2)
-                .background(
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .fill(.thickMaterial)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                .strokeBorder(.primary.opacity(0.08), lineWidth: 0.5)
-                        )
-                        .shadow(color: .black.opacity(0.2), radius: 3, y: 1)
-                )
-                .fixedSize()
-                .position(x: x, y: -height / 2 - 2)
-                .allowsHitTesting(false)
-                .transition(.opacity)
-        }
-    }
-
     private var knob: some View {
         Circle()
             .fill(.white)
@@ -145,6 +125,17 @@ struct VolumeSlider: View {
             .shadow(color: .black.opacity(0.22), radius: 1.5, y: 0.5)
             .frame(width: style.knobSize, height: style.knobSize)
             .scaleEffect(isDragging ? 1.12 : (isHovering ? 1.05 : 1))
+    }
+
+    /// Подсказка нужна, только когда курсор на самой ручке, а не где-то по
+    /// треку. Во время перетаскивания — всегда: курсор к тому моменту может
+    /// уехать за пределы слайдера, а число должно оставаться видимым.
+    private func showsTip(knobCenter: CGFloat) -> Bool {
+        if isDragging { return true }
+        guard let hoverX else { return false }
+        // Небольшой допуск: целиться пиксель в пиксель по 13-точечному
+        // кружку — занятие на любителя.
+        return abs(hoverX - knobCenter) <= style.knobSize / 2 + 3
     }
 
     private var clamped: Float { max(0, min(value, 1)) }
@@ -165,5 +156,48 @@ struct VolumeSlider: View {
         let newValue = Float(max(0, min((location - style.knobSize / 2) / travel, 1)))
         guard abs(newValue - value) > 0.0005 else { return }
         value = newValue
+    }
+}
+
+
+// MARK: - Подсказка со значением
+
+/// Где и что показать над ручкой слайдера.
+///
+/// Через preference, а не через оверлей внутри слайдера: подсказка должна
+/// рисоваться поверх всей панели. Внутри списка её обрезает ScrollView,
+/// а внутри строки — не хватает высоты.
+struct SliderValueTip: Equatable {
+    let text: String
+    let anchor: Anchor<CGPoint>
+}
+
+struct SliderValueTipKey: PreferenceKey {
+    static let defaultValue: SliderValueTip? = nil
+    static func reduce(value: inout SliderValueTip?, nextValue: () -> SliderValueTip?) {
+        value = nextValue() ?? value
+    }
+}
+
+struct SliderValueBubble: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 10, weight: .medium).monospacedDigit())
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(.thickMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .strokeBorder(.primary.opacity(0.08), lineWidth: 0.5)
+                    )
+                    .shadow(color: .black.opacity(0.22), radius: 3, y: 1)
+            )
+            .fixedSize()
+            .allowsHitTesting(false)
     }
 }

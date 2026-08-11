@@ -8,11 +8,15 @@
 //    1. На приложение, которому нужен перехват, создаётся CATapDescription с
 //       muteBehavior = .mutedWhenTapped. Система при этом ГЛУШИТ оригинальный
 //       выход процесса — двойного звука не возникает.
-//    2. Таппы подключаются входами к приватному агрегатному устройству,
-//       main sub-device которого — устройство вывода. Агрегат СВОЙ на каждое
-//       устройство: именно это и позволяет увести приложение в наушники, пока
-//       остальные играют в динамики.
-//    3. В каждом агрегате свой IOProc: читает входы, умножает на gain, пишет
+//    2. Тапп подключается входом к приватному агрегатному устройству,
+//       main sub-device которого — устройство вывода. Агрегат СВОЙ у каждого
+//       приложения. Это и позволяет увести одно приложение в наушники, пока
+//       остальные играют в динамики, и — главное — делает их независимыми:
+//       список таппов задаётся только при создании агрегата, поэтому появление
+//       или снятие таппа = пересборка агрегата, а в общем агрегате она рвала
+//       звук ВСЕМ, кто в нём был. Дёрнешь громкость одного — лагает музыка
+//       в другом.
+//    3. В каждом агрегате свой IOProc: читает вход, умножает на gain, пишет
 //       в выход. Общий clock domain => нет ресемплинга и дрейфа, латентность
 //       = 1 буфер.
 //
@@ -78,18 +82,20 @@ final class AudioProcessTapEngine {
         var gain: Float
     }
 
-    /// Один маршрут = одно устройство вывода со своим агрегатом и IOProc.
+    /// Маршрут одного приложения: его тапп, свой агрегат и свой IOProc.
     private final class Route {
-        let outputUID: String
-        /// Порядок важен: он же задаёт порядок каналов в агрегате.
-        var pids: [pid_t] = []
+        let pid: pid_t
+        var outputUID: String
         var aggregateID: AudioObjectID = .unknown
         var ioProcID: AudioDeviceIOProcID?
         var isRunning = false
         let renderState = RenderState()
         var volumeObservers: [AudioPropertyObserver] = []
 
-        init(outputUID: String) { self.outputUID = outputUID }
+        init(pid: pid_t, outputUID: String) {
+            self.pid = pid
+            self.outputUID = outputUID
+        }
     }
 
     // MARK: - Состояние
@@ -99,7 +105,8 @@ final class AudioProcessTapEngine {
     /// Живые таппы по pid. Тапп переживает пересборку агрегатов и переезд
     /// приложения с одного устройства на другое — пересоздавать его незачем.
     private var taps: [pid_t: TapSlot] = [:]
-    private var routes: [String: Route] = [:]
+    /// По процессу, а не по устройству: агрегат у каждого приложения свой.
+    private var routes: [pid_t: Route] = [:]
 
     /// Процессы, на которых тапп создать не удалось. Нужны, чтобы немедленный
     /// путь не превращался в долбёжку: без этого списка каждое движение
@@ -140,15 +147,21 @@ final class AudioProcessTapEngine {
         }
     }
 
+    /// Задержка перед снятием таппа.
+    ///
+    /// Полторы секунды, а не доли: слайдер у отметки 100% легко пересекает её
+    /// туда-обратно много раз подряд, и с короткой задержкой каждое пересечение
+    /// успевало снять тапп и создать заново — то есть пересобрать агрегат.
+    /// Снятие таппа это уборка, отложить её не жалко: лишнюю секунду работает
+    /// уже созданный тапп.
+    private static let tapReleaseDelay: TimeInterval = 1.5
+
     /// Применить набор уровней.
     ///
-    /// Гейны — всегда немедленно. Пересборка агрегатов дебаунсится, но
+    /// Гейны — всегда немедленно. Пересборка агрегата дебаунсится, но
     /// НЕСИММЕТРИЧНО: появление таппа применяется сразу, исчезновение — с
     /// задержкой. Ждать появления нельзя — пока таппа нет, приложение играет
-    /// в полную громкость, и слайдер выглядит залипшим на те самые 150 мс.
-    /// А вот исчезновение стоит придержать: на обратном ходу слайдер легко
-    /// раз десять пересечёт отметку 100%, и каждое пересечение пересобирало
-    /// бы агрегат.
+    /// в полную громкость, и слайдер выглядит залипшим.
     func apply(levels: [Level]) {
         queue.async { [weak self] in
             guard let self else { return }
@@ -168,7 +181,7 @@ final class AudioProcessTapEngine {
                 self?.applyUnsafe(levels: levels)
             }
             self.pendingWorkItem = work
-            self.queue.asyncAfter(deadline: .now() + 0.15, execute: work)
+            self.queue.asyncAfter(deadline: .now() + Self.tapReleaseDelay, execute: work)
         }
     }
 
@@ -197,9 +210,14 @@ final class AudioProcessTapEngine {
             return true
         }
 
-        for level in required {
+        // Приложение переехало на другое устройство — это тоже действие
+        // пользователя, а не движение слайдера. Процессы, которым тапп создать
+        // не удалось, из проверки исключены: иначе каждое движение слайдера
+        // запускало бы полную пересборку заново.
+        for level in required where !tapFailures.contains(level.pid) {
             guard let uid = level.resolvedOutput(default: defaultUID) else { continue }
-            if routes[uid]?.pids.contains(level.pid) != true { return true }
+            guard let route = routes[level.pid] else { return true }
+            if route.outputUID != uid { return true }
         }
         return false
     }
@@ -218,15 +236,13 @@ final class AudioProcessTapEngine {
     // MARK: - Реализация (всегда на self.queue)
 
     private func updateGainsOnlyUnsafe(levels: [Level]) {
-        var changed = false
         for level in levels {
             guard var slot = taps[level.pid], slot.gain != level.effectiveGain else { continue }
             slot.gain = level.effectiveGain
             taps[level.pid] = slot
-            changed = true
+            // Только своему маршруту: чужие про эту громкость ничего не знают.
+            if let route = routes[level.pid] { pushGainMapUnsafe(route) }
         }
-        guard changed else { return }
-        for route in routes.values { pushGainMapUnsafe(route) }
     }
 
     private func applyUnsafe(levels: [Level]) {
@@ -235,32 +251,33 @@ final class AudioProcessTapEngine {
         let defaultUID = outputDeviceUID
         let required = requiredLevelsUnsafe(levels)
 
-        // Кого куда вести. Порядок внутри маршрута — порядок уровней.
-        var wanted: [String: [pid_t]] = [:]
-        for level in required {
-            guard let uid = level.resolvedOutput(default: defaultUID) else { continue }
-            wanted[uid, default: []].append(level.pid)
-        }
-
         do {
-            try syncTapsUnsafe(required: required, wanted: &wanted)
+            try syncTapsUnsafe(required: required)
 
-            // Маршруты, которым больше некого вести.
-            for (uid, route) in routes where wanted[uid] == nil {
+            let alive = Set(required.map(\.pid)).filter { taps[$0] != nil }
+
+            // Маршруты, которым больше нечего вести.
+            for (pid, route) in routes where !alive.contains(pid) {
                 teardownRouteUnsafe(route)
-                routes.removeValue(forKey: uid)
+                routes.removeValue(forKey: pid)
             }
 
-            for (uid, pids) in wanted {
-                let route = routes[uid] ?? Route(outputUID: uid)
-                routes[uid] = route
+            for level in required {
+                guard taps[level.pid] != nil,
+                      let uid = level.resolvedOutput(default: defaultUID) else { continue }
 
-                // Сравнение МНОЖЕСТВАМИ: перестановка приложений в списке не
-                // меняет состав маршрута, и пересобирать агрегат из-за неё
-                // (то есть рвать звук) незачем.
-                guard Set(route.pids) != Set(pids) || !route.isRunning else { continue }
-                route.pids = pids
-                try rebuildRouteUnsafe(route)
+                if let route = routes[level.pid] {
+                    // Пересобираем только если маршрут переехал или не запущен.
+                    // Смена громкости сюда не попадает — она идёт быстрым путём
+                    // и агрегат не трогает.
+                    guard route.outputUID != uid || !route.isRunning else { continue }
+                    route.outputUID = uid
+                    try rebuildRouteUnsafe(route)
+                } else {
+                    let route = Route(pid: level.pid, outputUID: uid)
+                    routes[level.pid] = route
+                    try rebuildRouteUnsafe(route)
+                }
             }
 
             updateGainsOnlyUnsafe(levels: levels)
@@ -276,7 +293,7 @@ final class AudioProcessTapEngine {
     /// Привести набор таппов к нужному: лишние уничтожить, недостающие создать.
     /// Приложение, для которого тапп создать не удалось, из маршрута выпадает —
     /// один упавший процесс не должен ронять весь микшер.
-    private func syncTapsUnsafe(required: [Level], wanted: inout [String: [pid_t]]) throws {
+    private func syncTapsUnsafe(required: [Level]) throws {
         let requiredPIDs = Set(required.map(\.pid))
 
         for (pid, slot) in taps where !requiredPIDs.contains(pid) {
@@ -297,11 +314,6 @@ final class AudioProcessTapEngine {
                     "Tap for pid \(level.pid) failed: \(error.localizedDescription, privacy: .public)"
                 )
             }
-        }
-
-        for (uid, pids) in wanted {
-            let alive = pids.filter { taps[$0] != nil }
-            if alive.isEmpty { wanted.removeValue(forKey: uid) } else { wanted[uid] = alive }
         }
     }
 
@@ -375,8 +387,7 @@ final class AudioProcessTapEngine {
     private func rebuildRouteUnsafe(_ route: Route) throws {
         teardownDeviceUnsafe(route)
 
-        let tapList = route.pids.compactMap { taps[$0] }
-        guard !tapList.isEmpty else { return }
+        guard let slot = taps[route.pid] else { return }
 
         // Префикс общий с фильтром в AudioDeviceManager: по нему наши агрегаты
         // отсеиваются из списка устройств вывода.
@@ -393,9 +404,9 @@ final class AudioProcessTapEngine {
             kAudioAggregateDeviceSubDeviceListKey: [
                 [kAudioSubDeviceUIDKey: route.outputUID]
             ],
-            kAudioAggregateDeviceTapListKey: tapList.map {
-                [kAudioSubTapUIDKey: $0.uid] as [String: Any]
-            }
+            kAudioAggregateDeviceTapListKey: [
+                [kAudioSubTapUIDKey: slot.uid] as [String: Any]
+            ]
         ]
 
         var deviceID = AudioObjectID.unknown
@@ -407,7 +418,7 @@ final class AudioProcessTapEngine {
 
         route.aggregateID = deviceID
         AppLog.engine.info(
-            "Route \(route.outputUID, privacy: .public): aggregate \(deviceID) with \(tapList.count) tap(s)"
+            "Маршрут pid \(route.pid) -> \(route.outputUID, privacy: .public): агрегат \(deviceID)"
         )
 
         bindDeviceVolumeUnsafe(route)
@@ -415,18 +426,12 @@ final class AudioProcessTapEngine {
         try startIfNeededUnsafe(route)
     }
 
-    /// Раскладывает пер-апповые гейны в плоский массив «на каждый входной канал».
-    /// Порядок каналов = порядок таппов в tap-list.
+    /// В агрегате один тапп, поэтому карта — это его гейн на каждый канал.
     private func pushGainMapUnsafe(_ route: Route) {
-        var channelGains: [Float] = []
-        channelGains.reserveCapacity(route.pids.count * 2)
-        for pid in route.pids {
-            guard let slot = taps[pid] else { continue }
-            for _ in 0..<max(slot.channelCount, 1) {
-                channelGains.append(slot.gain)
-            }
-        }
-        route.renderState.updateChannelGains(channelGains)
+        guard let slot = taps[route.pid] else { return }
+        route.renderState.updateChannelGains(
+            Array(repeating: slot.gain, count: max(slot.channelCount, 1))
+        )
     }
 
     // MARK: - Громкость устройства маршрута

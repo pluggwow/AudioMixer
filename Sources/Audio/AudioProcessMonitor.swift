@@ -36,6 +36,9 @@ final class AudioProcessMonitor: ObservableObject {
     private var listObserver: AudioPropertyObserver?
     private var runningObservers: [AudioObjectID: AudioPropertyObserver] = [:]
     private var refreshTask: Task<Void, Never>?
+    /// Когда приложение из `onlyWhilePlaying` звучало в последний раз.
+    private var lastPlayed: [String: Date] = [:]
+    private var graceTask: Task<Void, Never>?
 
     private let ownPID = ProcessInfo.processInfo.processIdentifier
 
@@ -81,6 +84,7 @@ final class AudioProcessMonitor: ObservableObject {
         listObserver = nil
         runningObservers.removeAll()
         refreshTask?.cancel()
+        graceTask?.cancel()
     }
 
     /// Небольшая коалесценция: при запуске приложения Core Audio может прислать
@@ -109,11 +113,12 @@ final class AudioProcessMonitor: ObservableObject {
         var seen = Set<AudioObjectID>()
 
         for objectID in objectIDs {
-            guard let info = makeInfo(objectID: objectID) else { continue }
             seen.insert(objectID)
-            result.append(info)
 
-            // Подписка на «начал/перестал выводить звук».
+            // Слушателя вешаем на ВСЕ процессы, а не только на попавшие в
+            // список. Иначе о том, что скрытый процесс начал играть, сообщить
+            // некому — и он так и не появится: ровно так пропадал Finder с
+            // быстрым просмотром видео.
             if runningObservers[objectID] == nil {
                 runningObservers[objectID] = AudioPropertyObserver(
                     objectID: objectID,
@@ -122,6 +127,9 @@ final class AudioProcessMonitor: ObservableObject {
                     Task { @MainActor in self?.scheduleRefresh() }
                 }
             }
+
+            guard let info = makeInfo(objectID: objectID) else { continue }
+            result.append(info)
         }
 
         // Снимаем слушателей с исчезнувших процессов.
@@ -134,6 +142,8 @@ final class AudioProcessMonitor: ObservableObject {
             if $0.isRunningOutput != $1.isRunningOutput { return $0.isRunningOutput }
             return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
         }
+
+        scheduleGraceExpiry(for: result)
 
         guard result != processes else { return }
         processes = result
@@ -150,6 +160,38 @@ final class AudioProcessMonitor: ObservableObject {
     private static let onlyWhilePlaying: Set<String> = [
         "com.apple.finder"
     ]
+
+    /// Сколько такое приложение остаётся в списке после того, как замолчало.
+    ///
+    /// Исчезать сразу нельзя: видео в быстром просмотре ставят на паузу,
+    /// перематывают и запускают снова, а строка в этот момент пропадала бы
+    /// из-под курсора.
+    private static let lingerAfterPlaying: TimeInterval = 180
+
+    private func isWithinGrace(_ bundleID: String) -> Bool {
+        guard let played = lastPlayed[bundleID] else { return false }
+        return Date().timeIntervalSince(played) < Self.lingerAfterPlaying
+    }
+
+    /// Строка, оставленная «на отсрочке», сама по себе не исчезнет: нотификаций
+    /// больше не будет, приложение уже молчит. Поэтому будим себя к сроку.
+    private func scheduleGraceExpiry(for result: [AudioProcessInfo]) {
+        graceTask?.cancel()
+
+        let deadlines = result
+            .filter { !$0.isRunningOutput && Self.onlyWhilePlaying.contains($0.bundleID) }
+            .compactMap { lastPlayed[$0.bundleID] }
+            .map { $0.addingTimeInterval(Self.lingerAfterPlaying) }
+
+        guard let nearest = deadlines.min() else { return }
+        let delay = max(nearest.timeIntervalSinceNow, 0.5)
+
+        graceTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled else { return }
+            self.refresh()
+        }
+    }
 
     private func makeInfo(objectID: AudioObjectID) -> AudioProcessInfo? {
         // PID может исчезнуть между получением списка и чтением свойств —
@@ -171,9 +213,13 @@ final class AudioProcessMonitor: ObservableObject {
         // заранее. Фоновых агентов (Пункт управления, PowerChime, MonitorControl,
         // loginwindow) — только пока они реально звучат: иначе они забивают
         // список тем, чем управлять незачем.
+        if isRunning, Self.onlyWhilePlaying.contains(bundleID) {
+            lastPlayed[bundleID] = .now
+        }
+
         let alwaysVisible = owner.app.activationPolicy == .regular
             && !Self.onlyWhilePlaying.contains(bundleID)
-        guard alwaysVisible || isRunning else { return nil }
+        guard alwaysVisible || isRunning || isWithinGrace(bundleID) else { return nil }
 
         return AudioProcessInfo(
             objectID: objectID,

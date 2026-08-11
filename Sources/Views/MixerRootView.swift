@@ -29,7 +29,7 @@ struct MixerRootView: View {
 
     var body: some View {
         mixer
-        .background(settings.panelMaterial.shapeStyle)
+        .background(PanelBackground(material: settings.panelMaterial.nsMaterial))
         // Подсказка со значением рисуется здесь, поверх всего: внутри списка
         // её обрезал бы ScrollView, а внутри строки не хватает высоты.
         .overlayPreferenceValue(HoverTipKey.self) { tip in
@@ -265,5 +265,32 @@ private struct FooterButton: View {
         .onHover { hovering in
             withAnimation(.easeOut(duration: 0.12)) { isHovering = hovering }
         }
+    }
+}
+
+/// Фон панели настоящим системным материалом.
+///
+/// `blendingMode = .behindWindow` — смешивается с тем, что за окном, а не с
+/// нарисованным под ним внутри окна: именно поэтому панель просвечивает так
+/// же, как системные, а не выглядит вторым стеклом поверх первого.
+///
+/// `state = .active` держит эффект живым, даже когда окно не ключевое. Наша
+/// панель ключевой как раз перестаёт быть, стоит открыть настройки, — без
+/// этого материал в тот же момент выцветал бы в серую заливку.
+private struct PanelBackground: NSViewRepresentable {
+
+    let material: NSVisualEffectView.Material
+
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.blendingMode = .behindWindow
+        view.state = .active
+        view.material = material
+        return view
+    }
+
+    func updateNSView(_ view: NSVisualEffectView, context: Context) {
+        guard view.material != material else { return }
+        view.material = material
     }
 }

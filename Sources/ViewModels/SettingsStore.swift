@@ -43,14 +43,16 @@ enum PanelMaterial: String, CaseIterable, Identifiable {
 
     var title: String { self == .translucent ? "Прозрачное" : "Однотонное" }
 
-    var shapeStyle: AnyShapeStyle {
+    /// Материал AppKit, а не SwiftUI-шный.
+    ///
+    /// SwiftUI-материал смешивается с тем, что нарисовано под ним в окне, —
+    /// то есть с подложкой самой панели, и получалось два стекла подряд.
+    /// NSVisualEffectView с blendingMode = .behindWindow смешивается с тем,
+    /// что ЗА окном: с рабочим столом и чужими окнами, как системные панели.
+    var nsMaterial: NSVisualEffectView.Material {
         switch self {
-        // Самого тонкого системного материала мало: панель менюбара рисует
-        // под нами свою подложку, и наш слой ложится поверх неё вторым —
-        // получается плотнее, чем у системных панелей. Приглушаем свой слой,
-        // чтобы сквозь него работала подложка, а не два стекла подряд.
-        case .translucent: return AnyShapeStyle(.ultraThinMaterial.opacity(0.5))
-        case .solid:       return AnyShapeStyle(.thickMaterial)
+        case .translucent: return .hudWindow       // самый прозрачный из системных
+        case .solid:       return .windowBackground // самый плотный
         }
     }
 }

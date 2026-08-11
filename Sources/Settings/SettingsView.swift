@@ -114,6 +114,24 @@ struct AppearanceSettingsView: View {
             }
 
             Section {
+                LabeledContent {
+                    HStack(spacing: 14) {
+                        ForEach(PanelMaterial.allCases) { material in
+                            MaterialOption(
+                                material: material,
+                                isSelected: settings.panelMaterial == material
+                            ) {
+                                settings.panelMaterial = material
+                            }
+                        }
+                    }
+                } label: {
+                    Text("Liquid Glass")
+                    Text("Насколько панель просвечивает то, что под ней")
+                }
+            }
+
+            Section {
                 Toggle("Показывать иконки приложений", isOn: $settings.showAppIcons)
                 Picker("Стиль слайдера", selection: Binding(
                     get: { settings.sliderStyle },
@@ -208,15 +226,18 @@ struct ApplicationsSettingsView: View {
     }
 }
 
-// MARK: - Выбор темы
+// MARK: - Миниатюры-переключатели
 
-/// Тема выбирается картинкой, а не строкой в списке: так это сделано в
-/// системных настройках, и по миниатюре сразу видно, что получится.
-struct ThemeOption: View {
+/// Общий вид переключателя-картинки: рамка, подпись, синее выделение.
+///
+/// Один на оба переключателя намеренно: тема и Liquid Glass стоят рядом, и
+/// разъехавшиеся на пару точек рамки были бы заметны сразу.
+struct ThumbnailOption<Preview: View>: View {
 
-    let mode: AppearanceMode
+    let title: String
     let isSelected: Bool
     let action: () -> Void
+    @ViewBuilder let preview: () -> Preview
 
     @State private var isHovering = false
 
@@ -225,7 +246,7 @@ struct ThemeOption: View {
 
     var body: some View {
         VStack(spacing: 5) {
-            preview
+            preview()
                 .frame(width: size.width, height: size.height)
                 .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
                 .overlay(
@@ -240,7 +261,7 @@ struct ThemeOption: View {
                 )
                 .scaleEffect(isHovering && !isSelected ? 1.03 : 1)
 
-            Text(mode.title)
+            Text(title)
                 .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
                 .foregroundStyle(isSelected ? .primary : .secondary)
         }
@@ -251,36 +272,82 @@ struct ThemeOption: View {
         }
         .animation(.easeOut(duration: 0.15), value: isSelected)
         .accessibilityElement()
-        .accessibilityLabel(mode.title)
+        .accessibilityLabel(title)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
+}
 
-    @ViewBuilder
-    private var preview: some View {
-        switch mode {
-        case .light: miniature(dark: false)
-        case .dark:  miniature(dark: true)
-        case .system:
-            // Половина светлая, половина тёмная — как рисует систему сама macOS.
-            ZStack {
-                miniature(dark: true)
-                miniature(dark: false)
-                    .mask(HStack(spacing: 0) { Rectangle(); Color.clear })
+/// Тема выбирается картинкой, а не строкой в списке: так это сделано в
+/// системных настройках, и по миниатюре сразу видно, что получится.
+struct ThemeOption: View {
+
+    let mode: AppearanceMode
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        ThumbnailOption(title: mode.title, isSelected: isSelected, action: action) {
+            switch mode {
+            case .light: PanelMiniature(dark: false)
+            case .dark:  PanelMiniature(dark: true)
+            case .system:
+                // Половина светлая, половина тёмная — как рисует систему сама macOS.
+                ZStack {
+                    PanelMiniature(dark: true)
+                    PanelMiniature(dark: false)
+                        .mask(HStack(spacing: 0) { Rectangle(); Color.clear })
+                }
             }
         }
     }
+}
 
-    /// Миниатюра нашей же панели: заголовок и три строки со слайдерами.
-    /// Цвета заданы числами, а не системными: миниатюра должна показывать
-    /// свою тему, а не ту, что сейчас в приложении.
-    private func miniature(dark: Bool) -> some View {
+/// Прозрачность панели. На миниатюре под панелью нарочно пёстрый фон:
+/// на однотонном разницы между материалами не увидеть вовсе.
+struct MaterialOption: View {
+
+    let material: PanelMaterial
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        ThumbnailOption(title: material.title, isSelected: isSelected, action: action) {
+            ZStack {
+                LinearGradient(
+                    colors: [Color(red: 0.24, green: 0.28, blue: 0.72),
+                             Color(red: 0.62, green: 0.30, blue: 0.78),
+                             Color(red: 0.20, green: 0.42, blue: 0.80)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+
+                PanelMiniature(dark: true, opacity: material == .translucent ? 0.45 : 0.96)
+                    .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                    .padding(6)
+            }
+        }
+    }
+}
+
+/// Миниатюра нашей же панели: заголовок и три строки со слайдерами.
+///
+/// Цвета заданы числами, а не системными: миниатюра показывает свою тему,
+/// а не ту, что сейчас стоит в приложении, — иначе картинка «Светлая»
+/// темнела бы вместе с окном и перестала обещать то, что показывает.
+struct PanelMiniature: View {
+
+    let dark: Bool
+    var opacity: Double = 1
+
+    var body: some View {
         let background = dark ? Color(white: 0.14) : Color(white: 0.97)
         let chrome = dark ? Color(white: 0.32) : Color(white: 0.78)
         let track = dark ? Color(white: 0.30) : Color(white: 0.85)
         let fill = dark ? Color.white : Color(white: 0.35)
 
-        return ZStack {
-            background
+        ZStack {
+            background.opacity(opacity)
+
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 3) {
                     ForEach(0..<3, id: \.self) { _ in

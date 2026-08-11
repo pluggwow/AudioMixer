@@ -70,7 +70,7 @@ struct MixerRootView: View {
                 .padding(.vertical, 8)
         }
         .frame(width: panelWidth)
-        .background(.ultraThinMaterial)
+        .background(settings.panelMaterial.shapeStyle)
         // Подсказка со значением рисуется здесь, поверх всего: внутри списка
         // её обрезал бы ScrollView, а внутри строки не хватает высоты.
         .overlayPreferenceValue(HoverTipKey.self) { tip in

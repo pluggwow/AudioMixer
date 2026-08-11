@@ -36,6 +36,21 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
     }
 }
 
+/// Насколько панель просвечивает то, что под ней.
+enum PanelMaterial: String, CaseIterable, Identifiable {
+    case translucent, solid
+    var id: String { rawValue }
+
+    var title: String { self == .translucent ? "Прозрачное" : "Однотонное" }
+
+    var shapeStyle: AnyShapeStyle {
+        switch self {
+        case .translucent: return AnyShapeStyle(.ultraThinMaterial)
+        case .solid:       return AnyShapeStyle(.thickMaterial)
+        }
+    }
+}
+
 enum SliderStyleOption: String, CaseIterable, Identifiable {
     case capsule, thin
     var id: String { rawValue }
@@ -55,12 +70,18 @@ final class SettingsStore: ObservableObject {
         didSet { applyAppearance() }
     }
     @AppStorage("showAppIcons") var showAppIcons: Bool = true
+    @AppStorage("panelMaterial") var panelMaterialRaw: String = PanelMaterial.translucent.rawValue
     @AppStorage("sliderStyle") var sliderStyleRaw: String = SliderStyleOption.capsule.rawValue
     @AppStorage("launchAtLogin") var launchAtLoginPreference: Bool = false
 
     var appearanceMode: AppearanceMode {
         get { AppearanceMode(rawValue: appearanceModeRaw) ?? .system }
         set { appearanceModeRaw = newValue.rawValue }
+    }
+
+    var panelMaterial: PanelMaterial {
+        get { PanelMaterial(rawValue: panelMaterialRaw) ?? .translucent }
+        set { panelMaterialRaw = newValue.rawValue }
     }
 
     var sliderStyle: SliderStyleOption {

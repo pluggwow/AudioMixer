@@ -23,21 +23,12 @@ struct MixerRootView: View {
     private let panelWidth = RowMetrics.panelWidth
     private let sidePadding = RowMetrics.panelPadding
 
-    /// Настройки открыты второй колонкой справа.
-    @State private var showsSettings = false
+    /// Окно настроек — отдельное, но привязанное к панели: открывается слева
+    /// от неё и не забирает фокус, поэтому панель остаётся на экране.
+    @ObservedObject private var settingsPanel = SettingsPanelController.shared
 
     var body: some View {
-        // Настройки слева от микшера и без анимации появления: панель и так
-        // возникает целиком, и выезжающая колонка выглядела бы приёмом ради
-        // приёма.
-        HStack(alignment: .top, spacing: 0) {
-            if showsSettings {
-                SettingsView()
-                Divider()
-            }
-
-            mixer
-        }
+        mixer
         .background(settings.panelMaterial.shapeStyle)
         // Подсказка со значением рисуется здесь, поверх всего: внутри списка
         // её обрезал бы ScrollView, а внутри строки не хватает высоты.
@@ -220,8 +211,10 @@ struct MixerRootView: View {
 
     private var footer: some View {
         HStack(spacing: 4) {
-            FooterButton(title: "Настройки", isActive: showsSettings) {
-                showsSettings.toggle()
+            FooterButton(title: "Настройки", isActive: settingsPanel.isVisible) {
+                // Ключевое окно в этот момент — сама панель микшера: по ней
+                // и позиционируем настройки.
+                settingsPanel.toggle(nextTo: NSApp.keyWindow)
             }
 
             Spacer()
@@ -255,7 +248,7 @@ private struct FooterButton: View {
         Button(action: action) {
             HStack(spacing: 4) {
                 Text(title)
-                Image(systemName: isActive ? "chevron.right" : "chevron.left")
+                Image(systemName: "chevron.left")
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(.tertiary)
             }

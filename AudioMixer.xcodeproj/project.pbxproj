@@ -18,6 +18,7 @@
 		22EC89828746DE853C592AD8 /* HotkeyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 970DB271C2D7E71BCBF7528D /* HotkeyService.swift */; };
 		23A20F8439282BC48A27910E /* VolumeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 848D6F996EBFD12A0EEF138C /* VolumeStore.swift */; };
 		28DEC9A752A64EB2437305DB /* AppListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A469DA70067B7D58F6496EF /* AppListView.swift */; };
+		2E662479A9CBEB8261CF9B64 /* SettingsPanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95E34E59470729C017347F08 /* SettingsPanelController.swift */; };
 		2E8BD1A95E24226BD222274E /* MixerRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE98D57250B9E7793A273CF /* MixerRootView.swift */; };
 		409A8872F7B15ABB6E753993 /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD6A2586AC5BBC885207676 /* SettingsStore.swift */; };
 		480424A64578FE1195B33D23 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9EC2C8B211716EB7F481EA /* SettingsView.swift */; };
@@ -61,6 +62,7 @@
 		848D6F996EBFD12A0EEF138C /* VolumeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeStore.swift; sourceTree = "<group>"; };
 		8499D6C3B66B4AA798D2AFB8 /* LoginItemService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginItemService.swift; sourceTree = "<group>"; };
 		8B66965A7354412E4D8FA69C /* OutputDeviceMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputDeviceMenu.swift; sourceTree = "<group>"; };
+		95E34E59470729C017347F08 /* SettingsPanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPanelController.swift; sourceTree = "<group>"; };
 		970DB271C2D7E71BCBF7528D /* HotkeyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyService.swift; sourceTree = "<group>"; };
 		A66C67512A32AB272CAA5857 /* AppRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRowView.swift; sourceTree = "<group>"; };
 		A72566E1E32B29F3496BDEA0 /* MixerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MixerViewModel.swift; sourceTree = "<group>"; };
@@ -116,6 +118,7 @@
 		19A855B03BB0425EB3C3BBB2 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				95E34E59470729C017347F08 /* SettingsPanelController.swift */,
 				5E9EC2C8B211716EB7F481EA /* SettingsView.swift */,
 			);
 			path = Settings;
@@ -293,6 +296,7 @@
 				14E6CF6FDE2097AF623B1E52 /* OutputDeviceMenu.swift in Sources */,
 				C3CCAB6F9FB9DD285ED2E590 /* PermissionManager.swift in Sources */,
 				17CA0DF29CCE65EC4317B1C5 /* RenderState.swift in Sources */,
+				2E662479A9CBEB8261CF9B64 /* SettingsPanelController.swift in Sources */,
 				409A8872F7B15ABB6E753993 /* SettingsStore.swift in Sources */,
 				480424A64578FE1195B33D23 /* SettingsView.swift in Sources */,
 				204D6298DE582913414058F6 /* StatusBanner.swift in Sources */,

@@ -15,6 +15,7 @@ struct SettingsView: View {
     @EnvironmentObject private var viewModel: MixerViewModel
 
     static let width: CGFloat = 480
+    static let height: CGFloat = 360
 
     var body: some View {
         TabView {
@@ -30,8 +31,7 @@ struct SettingsView: View {
             ApplicationsSettingsView()
                 .tabItem { Label("Приложения", systemImage: "square.grid.2x2") }
         }
-        // Тот же размер, что был у окна: вкладки под него и свёрстаны.
-        .frame(width: Self.width, height: 360)
+        .frame(width: Self.width, height: Self.height)
     }
 }
 

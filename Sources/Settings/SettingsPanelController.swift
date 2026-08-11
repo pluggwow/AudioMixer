@@ -4,10 +4,10 @@
 //
 //  Окно настроек, привязанное к панели микшера: открывается слева от неё.
 //
-//  Обычное окно (сцена Settings) не годится: оно забирает фокус, а панель
-//  менюбара система закрывает, как только фокус уходит. Настраивать
-//  приходилось вслепую. Поэтому окно здесь своё — NSPanel, который
-//  принципиально не становится ключевым:
+//  Сцена Settings не годится: обычное окно забирает фокус, а панель менюбара
+//  система закрывает, как только фокус уходит. Настраивать приходилось
+//  вслепую. Поэтому окно здесь своё — NSPanel, который принципиально не
+//  становится ключевым:
 //
 //    .nonactivatingPanel      — клик по нему не активирует приложение;
 //    becomesKeyOnlyIfNeeded   — фокус берётся только если он нужен контролу,
@@ -15,6 +15,12 @@
 //                               меню работают и без фокуса.
 //
 //  Поэтому панель микшера фокус не теряет и остаётся на экране.
+//
+//  Вкладки собраны на NSToolbar со стилем .preference. Привычный вид настроек
+//  со значками давала именно сцена Settings — она превращала SwiftUI-шный
+//  TabView в панель инструментов. В своём окне TabView рисуется обычным
+//  сегментированным переключателем без значков, поэтому панель инструментов
+//  здесь настоящая, как и была.
 //
 
 import AppKit
@@ -28,6 +34,8 @@ final class SettingsPanelController: NSObject, ObservableObject {
     @Published private(set) var isVisible = false
 
     private var panel: NSPanel?
+    private var hosting: NSHostingView<AnyView>?
+    private var selectedTab: SettingsTab = .general
 
     /// Зазор между окном настроек и панелью микшера.
     private let gap: CGFloat = 8
@@ -57,33 +65,68 @@ final class SettingsPanelController: NSObject, ObservableObject {
     // MARK: - Окно
 
     private func makePanel() -> NSPanel {
-        let container = AppContainer.shared
-        let root = SettingsView()
-            .environmentObject(container.mixerViewModel)
-            .environmentObject(container.settings)
-
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: SettingsView.width, height: SettingsView.height),
-            styleMask: [.titled, .closable, .utilityWindow, .nonactivatingPanel],
+            contentRect: NSRect(origin: .zero, size: SettingsTab.contentSize),
+            styleMask: [.titled, .closable, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
-        panel.title = "Настройки"
-        panel.contentView = NSHostingView(rootView: root)
+
+        let hosting = NSHostingView(rootView: content(for: selectedTab))
+        self.hosting = hosting
+        panel.contentView = hosting
         panel.delegate = self
+
+        let toolbar = NSToolbar(identifier: "AudioMixerSettings")
+        toolbar.delegate = self
+        toolbar.displayMode = .iconAndLabel
+        toolbar.allowsUserCustomization = false
+        toolbar.selectedItemIdentifier = NSToolbarItem.Identifier(selectedTab.rawValue)
+        panel.toolbar = toolbar
+        // Тот самый вид настроек со значками в ряд.
+        panel.toolbarStyle = .preference
+        panel.title = selectedTab.title
 
         panel.isFloatingPanel = true
         panel.becomesKeyOnlyIfNeeded = true
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
         // Без анимации появления: панель менюбара возникает мгновенно, и
-        // выплывающее рядом окно рядом с ней выглядит чужеродно.
+        // выплывающее рядом окно выглядит чужеродно.
         panel.animationBehavior = .none
         // На уровне всплывающих панелей: ниже — и окно уедет под панель микшера.
         panel.level = .popUpMenu
         panel.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
 
         return panel
+    }
+
+    private func content(for tab: SettingsTab) -> AnyView {
+        let container = AppContainer.shared
+
+        let view: AnyView
+        switch tab {
+        case .general:    view = AnyView(GeneralSettingsView())
+        case .audio:      view = AnyView(AudioSettingsView())
+        case .appearance: view = AnyView(AppearanceSettingsView())
+        case .apps:       view = AnyView(ApplicationsSettingsView())
+        }
+
+        return AnyView(
+            view
+                .frame(width: SettingsTab.contentSize.width,
+                       height: SettingsTab.contentSize.height)
+                .environmentObject(container.mixerViewModel)
+                .environmentObject(container.settings)
+        )
+    }
+
+    @objc private func selectTab(_ sender: NSToolbarItem) {
+        guard let tab = SettingsTab(rawValue: sender.itemIdentifier.rawValue) else { return }
+        selectedTab = tab
+        hosting?.rootView = content(for: tab)
+        panel?.title = tab.title
+        panel?.toolbar?.selectedItemIdentifier = sender.itemIdentifier
     }
 
     /// Слева от панели микшера, по верхнему краю. Если панель не нашлась —
@@ -111,6 +154,43 @@ final class SettingsPanelController: NSObject, ObservableObject {
         }
 
         panel.setFrameOrigin(origin)
+    }
+}
+
+// MARK: - Вкладки
+
+extension SettingsPanelController: NSToolbarDelegate {
+
+    private var identifiers: [NSToolbarItem.Identifier] {
+        SettingsTab.allCases.map { NSToolbarItem.Identifier($0.rawValue) }
+    }
+
+    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        identifiers
+    }
+
+    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        identifiers
+    }
+
+    /// Без этого пункты не подсвечиваются как выбранные.
+    func toolbarSelectableItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        identifiers
+    }
+
+    func toolbar(_ toolbar: NSToolbar,
+                 itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
+                 willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
+
+        guard let tab = SettingsTab(rawValue: itemIdentifier.rawValue) else { return nil }
+
+        let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+        item.label = tab.title
+        item.paletteLabel = tab.title
+        item.image = NSImage(systemSymbolName: tab.symbol, accessibilityDescription: tab.title)
+        item.target = self
+        item.action = #selector(selectTab(_:))
+        return item
     }
 }
 

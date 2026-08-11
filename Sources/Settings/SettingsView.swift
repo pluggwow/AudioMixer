@@ -9,30 +9,36 @@
 
 import SwiftUI
 
-struct SettingsView: View {
+/// Вкладка настроек. Раньше их рисовал `TabView` внутри сцены `Settings` —
+/// именно она превращала его в привычную панель инструментов со значками.
+/// Своё окно такого не умеет, поэтому вкладки собраны на `NSToolbar`, а здесь
+/// остался их перечень.
+enum SettingsTab: String, CaseIterable, Identifiable {
 
-    @EnvironmentObject private var settings: SettingsStore
-    @EnvironmentObject private var viewModel: MixerViewModel
+    case general, audio, appearance, apps
 
-    static let width: CGFloat = 480
-    static let height: CGFloat = 360
+    var id: String { rawValue }
 
-    var body: some View {
-        TabView {
-            GeneralSettingsView()
-                .tabItem { Label("Основные", systemImage: "gearshape") }
-
-            AudioSettingsView()
-                .tabItem { Label("Звук", systemImage: "speaker.wave.2") }
-
-            AppearanceSettingsView()
-                .tabItem { Label("Оформление", systemImage: "paintbrush") }
-
-            ApplicationsSettingsView()
-                .tabItem { Label("Приложения", systemImage: "square.grid.2x2") }
+    var title: String {
+        switch self {
+        case .general:    return "Основные"
+        case .audio:      return "Звук"
+        case .appearance: return "Оформление"
+        case .apps:       return "Приложения"
         }
-        .frame(width: Self.width, height: Self.height)
     }
+
+    var symbol: String {
+        switch self {
+        case .general:    return "gearshape"
+        case .audio:      return "speaker.wave.2"
+        case .appearance: return "paintbrush"
+        case .apps:       return "square.grid.2x2"
+        }
+    }
+
+    /// Размер окна тот же, что был у сцены Settings.
+    static let contentSize = CGSize(width: 480, height: 360)
 }
 
 // MARK: - Основные

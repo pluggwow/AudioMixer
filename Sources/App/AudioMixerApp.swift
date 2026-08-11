@@ -20,12 +20,9 @@ struct AudioMixerApp: App {
             MenuBarIcon(systemVolume: container.mixerViewModel.systemVolume)
         }
         .menuBarExtraStyle(.window)
-
-        Settings {
-            SettingsView()
-                .environmentObject(container.mixerViewModel)
-                .environmentObject(container.settings)
-        }
+        // Сцены Settings нет намеренно: настройки открываются второй колонкой
+        // той же панели. Отдельное окно забирало фокус, панель от этого
+        // закрывалась, и результат правок было не видно.
     }
 }
 

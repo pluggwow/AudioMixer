@@ -18,14 +18,56 @@ struct MixerRootView: View {
     @EnvironmentObject private var viewModel: MixerViewModel
     @EnvironmentObject private var settings: SettingsStore
 
-    @Environment(\.openSettings) private var openSettings
-
     /// Ширина и отступы живут в RowMetrics: строке они нужны, чтобы знать,
     /// сколько остаётся названию при фиксированном слайдере.
     private let panelWidth = RowMetrics.panelWidth
     private let sidePadding = RowMetrics.panelPadding
 
+    /// Настройки открыты второй колонкой справа.
+    @State private var showsSettings = false
+
     var body: some View {
+        HStack(spacing: 0) {
+            mixer
+
+            if showsSettings {
+                Divider()
+                SettingsPaneView {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                        showsSettings = false
+                    }
+                }
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
+        }
+        .background(settings.panelMaterial.shapeStyle)
+        // Подсказка со значением рисуется здесь, поверх всего: внутри списка
+        // её обрезал бы ScrollView, а внутри строки не хватает высоты.
+        .overlayPreferenceValue(HoverTipKey.self) { tip in
+            GeometryReader { proxy in
+                if let tip {
+                    let point = proxy[tip.anchor]
+                    // Ширина окошка считается по тексту, и прижимаем мы именно
+                    // его края: ограничивать один центр мало — у длинного
+                    // названия половина окошка всё равно уезжала за край.
+                    let inset: CGFloat = 8
+                    let maxWidth = panelWidth - inset * 2
+                    let width = min(HoverTipBubble.width(of: tip.text), maxWidth)
+                    let x = min(max(point.x, width / 2 + inset),
+                                panelWidth - width / 2 - inset)
+
+                    HoverTipBubble(text: tip.text)
+                        .frame(maxWidth: maxWidth)
+                        .position(x: x, y: point.y - 12)
+                }
+            }
+            .allowsHitTesting(false)
+        }
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: viewModel.apps)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.permissionStatus)
+    }
+
+    private var mixer: some View {
         VStack(alignment: .leading, spacing: 0) {
 
             MasterVolumeSection(
@@ -70,31 +112,6 @@ struct MixerRootView: View {
                 .padding(.vertical, 8)
         }
         .frame(width: panelWidth)
-        .background(settings.panelMaterial.shapeStyle)
-        // Подсказка со значением рисуется здесь, поверх всего: внутри списка
-        // её обрезал бы ScrollView, а внутри строки не хватает высоты.
-        .overlayPreferenceValue(HoverTipKey.self) { tip in
-            GeometryReader { proxy in
-                if let tip {
-                    let point = proxy[tip.anchor]
-                    // Ширина окошка считается по тексту, и прижимаем мы именно
-                    // его края: ограничивать один центр мало — у длинного
-                    // названия половина окошка всё равно уезжала за край.
-                    let inset: CGFloat = 8
-                    let maxWidth = panelWidth - inset * 2
-                    let width = min(HoverTipBubble.width(of: tip.text), maxWidth)
-                    let x = min(max(point.x, width / 2 + inset),
-                                panelWidth - width / 2 - inset)
-
-                    HoverTipBubble(text: tip.text)
-                        .frame(maxWidth: maxWidth)
-                        .position(x: x, y: point.y - 12)
-                }
-            }
-            .allowsHitTesting(false)
-        }
-        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: viewModel.apps)
-        .animation(.easeInOut(duration: 0.2), value: viewModel.permissionStatus)
     }
 
     /// Разделитель с отступами от краёв — как между блоками Control Center.
@@ -203,42 +220,13 @@ struct MixerRootView: View {
 
     // MARK: - Подвал
 
-    /// Одного openSettings() мало. Приложение работает как menu bar extra
-    /// (activationPolicy = .accessory), а такое приложение не выводит своё окно
-    /// на передний план само: окно настроек открывается позади всех остальных,
-    /// и со стороны это выглядит как «кнопка не работает».
-    private func openSettingsWindow() {
-        // Панель менюбара — это окно, которое сейчас в фокусе. Система
-        // закрывает его, как только фокус уходит на настройки, поэтому
-        // запоминаем его заранее и возвращаем на экран следом.
-        let panel = NSApp.keyWindow
-        AppLog.engine.info(
-            "Панель менюбара: \(panel.map { String(describing: type(of: $0)) } ?? "не найдена", privacy: .public)"
-        )
-
-        openSettings()
-        NSApp.activate()
-
-        // Окно создаётся асинхронно, поэтому поднимаем его на следующем витке
-        // цикла событий. orderFrontRegardless нужен потому, что у .accessory
-        // приложения makeKeyAndOrderFront срабатывает не всегда.
-        DispatchQueue.main.async {
-            if let window = NSApp.windows.first(where: {
-                $0.frameAutosaveName == "com_apple_SwiftUI_Settings_window"
-            }) {
-                window.makeKeyAndOrderFront(nil)
-                window.orderFrontRegardless()
-            }
-
-            // Панель возвращаем ПОСЛЕ настроек и без передачи фокуса: иначе
-            // она снова его перехватит, а настройки уйдут назад.
-            panel?.orderFrontRegardless()
-        }
-    }
-
     private var footer: some View {
         HStack(spacing: 4) {
-            FooterButton(title: "Настройки", action: openSettingsWindow)
+            FooterButton(title: "Настройки", isActive: showsSettings) {
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                    showsSettings.toggle()
+                }
+            }
 
             Spacer()
 
@@ -262,20 +250,27 @@ struct MixerRootView: View {
 private struct FooterButton: View {
 
     let title: String
+    var isActive: Bool = false
     let action: () -> Void
 
     @State private var isHovering = false
 
     var body: some View {
         Button(action: action) {
-            Text(title)
+            HStack(spacing: 4) {
+                Text(title)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .semibold))
+                    .rotationEffect(.degrees(isActive ? 180 : 0))
+                    .foregroundStyle(.tertiary)
+            }
                 .font(.system(size: 12))
                 .padding(.horizontal, 6)
                 .padding(.vertical, 3)
                 .contentShape(Rectangle())
                 .background(
                     RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .fill(.primary.opacity(isHovering ? 0.07 : 0))
+                        .fill(.primary.opacity(isActive || isHovering ? 0.07 : 0))
                 )
         }
         .buttonStyle(.plain)

@@ -27,6 +27,27 @@ deployment target 14.4 и **выключить App Sandbox**.
 При первом запуске macOS запросит разрешение на захват аудио. Без него работает
 только мастер-громкость; панель покажет баннер с кнопкой в Системные настройки.
 
+### Образ для раздачи
+
+```bash
+./dist.sh
+```
+
+Собирает universal-бинарник, проверяет подпись и складывает `dist/AudioMixer.dmg`
+с оформленным окном: фон, иконка приложения слева, «Программы» справа.
+
+Фон рисуется кодом — `Tools/GenerateDMGBackground.swift`; после правки нужно
+пересобрать картинку и склеить @1x с @2x:
+
+```bash
+swiftc -O Tools/GenerateDMGBackground.swift -o /tmp/gen_bg && /tmp/gen_bg Resources/DMG
+tiffutil -cathidpicheck Resources/DMG/dmg-background.png Resources/DMG/dmg-background@2x.png -out Resources/DMG/background.tiff
+```
+
+Раскладка окна живёт в `.DS_Store` внутри образа, и записать её может только
+Finder — отсюда AppleScript в `dist.sh`. Скрипту нужен доступ к автоматизации
+Finder; без него образ соберётся, но с видом по умолчанию, о чём он сообщит.
+
 ## Архитектура
 
 ```

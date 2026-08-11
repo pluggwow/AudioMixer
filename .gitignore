@@ -3,8 +3,9 @@
 DerivedData/
 dist/
 
-# Промежуточная папка сборки DMG
+# Промежуточные артефакты сборки DMG
 .dmgstage/
+.dmgstage-rw.dmg
 
 # Пользовательское состояние Xcode: у каждого своё, к проекту не относится
 *.xcodeproj/xcuserdata/

@@ -36,6 +36,7 @@ final class AudioProcessMonitor: ObservableObject {
     private var listObserver: AudioPropertyObserver?
     private var runningObservers: [AudioObjectID: AudioPropertyObserver] = [:]
     private var refreshTask: Task<Void, Never>?
+    private var pollTask: Task<Void, Never>?
     /// Когда приложение из `onlyWhilePlaying` звучало в последний раз.
     private var lastPlayed: [String: Date] = [:]
     private var graceTask: Task<Void, Never>?
@@ -78,6 +79,28 @@ final class AudioProcessMonitor: ObservableObject {
             Task { @MainActor in self?.scheduleRefresh() }
         }
         refresh()
+        startPolling()
+    }
+
+    /// Периодический опрос вдобавок к нотификациям.
+    ///
+    /// На нотификацию kAudioProcessPropertyIsRunningOutput полагаться нельзя:
+    /// проверено — QuickLookUIService (быстрый просмотр видео от Finder) уже
+    /// звучал, а приложение продолжало считать, что со звуком никого нет.
+    /// Нотификации приходят на появление и исчезновение процессов, а вот
+    /// «этот начал играть» доезжает не всегда.
+    ///
+    /// Опрос дешёвый: два десятка чтений свойств раз в две секунды — доли
+    /// микросекунды на фоне работающего IOProc.
+    private func startPolling() {
+        pollTask?.cancel()
+        pollTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                guard !Task.isCancelled else { return }
+                self?.refresh()
+            }
+        }
     }
 
     func stop() {
@@ -85,6 +108,7 @@ final class AudioProcessMonitor: ObservableObject {
         runningObservers.removeAll()
         refreshTask?.cancel()
         graceTask?.cancel()
+        pollTask?.cancel()
     }
 
     /// Небольшая коалесценция: при запуске приложения Core Audio может прислать

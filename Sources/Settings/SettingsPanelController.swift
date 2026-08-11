@@ -9,12 +9,14 @@
 //  вслепую. Поэтому окно здесь своё — NSPanel, который принципиально не
 //  становится ключевым:
 //
-//    .nonactivatingPanel      — клик по нему не активирует приложение;
-//    becomesKeyOnlyIfNeeded   — фокус берётся только если он нужен контролу,
-//                               а у нас их таких нет: тумблеры, слайдеры и
-//                               меню работают и без фокуса.
+//    .nonactivatingPanel — клик по нему не активирует приложение;
+//    canBecomeKey = false — окно не становится ключевым НИКОГДА.
 //
-//  Поэтому панель микшера фокус не теряет и остаётся на экране.
+//  Второе важнее и появилось не сразу: с becomesKeyOnlyIfNeeded фокус всё
+//  же уходил, стоило нажать контрол, который его просит, — и панель микшера
+//  в этот момент закрывалась. Не при каждом клике, поэтому и выглядело
+//  случайностью. Тумблеры, слайдеры, меню и кнопки работают от мыши и без
+//  фокуса, а полей ввода в настройках нет.
 //
 //  Вкладки собраны на NSToolbar со стилем .preference. Привычный вид настроек
 //  со значками давала именно сцена Settings — она превращала SwiftUI-шный
@@ -65,7 +67,7 @@ final class SettingsPanelController: NSObject, ObservableObject {
     // MARK: - Окно
 
     private func makePanel() -> NSPanel {
-        let panel = NSPanel(
+        let panel = NonKeyPanel(
             contentRect: NSRect(origin: .zero, size: SettingsTab.contentSize),
             styleMask: [.titled, .closable, .nonactivatingPanel],
             backing: .buffered,
@@ -88,7 +90,6 @@ final class SettingsPanelController: NSObject, ObservableObject {
         panel.title = selectedTab.title
 
         panel.isFloatingPanel = true
-        panel.becomesKeyOnlyIfNeeded = true
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
         // Без анимации появления: панель менюбара возникает мгновенно, и
@@ -200,4 +201,14 @@ extension SettingsPanelController: NSWindowDelegate {
         // Крестик в заголовке — тот же путь, что и кнопка в подвале.
         isVisible = false
     }
+}
+
+/// Окно, которое не становится ключевым ни при каких обстоятельствах.
+///
+/// Панель менюбара закрывается, как только теряет фокус. `becomesKeyOnlyIfNeeded`
+/// от этого не спасает: контрол, которому фокус нужен, всё равно его запросит,
+/// и панель закроется — не при каждом клике, поэтому и выглядит случайностью.
+private final class NonKeyPanel: NSPanel {
+    override var canBecomeKey: Bool { false }
+    override var canBecomeMain: Bool { false }
 }

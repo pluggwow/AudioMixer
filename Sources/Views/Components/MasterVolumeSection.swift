@@ -39,7 +39,9 @@ struct MasterVolumeSection: View {
                         }
                     ),
                     style: .system,
-                    isEnabled: systemVolume.isControllable && !systemVolume.isMuted,
+                    // На mute слайдер тоже живой: движение вверх снимает mute
+                    // тут же, в сеттере привязки.
+                    isEnabled: systemVolume.isControllable,
                     hoverLabel: systemVolume.isMuted
                         ? "Выкл."
                         : "\(Int((systemVolume.volume * 100).rounded()))%"

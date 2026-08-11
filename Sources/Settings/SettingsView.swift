@@ -2,262 +2,233 @@
 //  SettingsView.swift
 //  AudioMixer
 //
-//  Настройки живут не в отдельном окне, а второй половиной той же панели.
-//
-//  Отдельное окно приходилось открывать поверх панели, и система тут же
-//  закрывала панель — фокус уходил. Получалось, что настраиваешь вслепую:
-//  чтобы увидеть результат, надо закрыть настройки и открыть панель заново.
-//  Здесь закрываться нечему: это одно окно, и микшер виден рядом.
+//  Настройки живут не в отдельном окне, а колонкой слева от микшера, в том же
+//  окне панели. Отдельное окно забирало фокус, система от этого закрывала
+//  панель, и результат правок было не видно, пока её не откроешь заново.
 //
 
 import SwiftUI
 
-struct SettingsPaneView: View {
+struct SettingsView: View {
 
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var viewModel: MixerViewModel
 
-    let onClose: () -> Void
-
-    static let width: CGFloat = 380
+    static let width: CGFloat = 480
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            header
+        TabView {
+            GeneralSettingsView()
+                .tabItem { Label("Основные", systemImage: "gearshape") }
 
-            Divider()
+            AudioSettingsView()
+                .tabItem { Label("Звук", systemImage: "speaker.wave.2") }
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    generalSection
-                    appearanceSection
-                    audioSection
-                    storedAppsSection
-                }
-                .padding(14)
-            }
-            // Форма рисует собственный фон списка, а панель под ней —
-            // материал. Без этого настройки выглядели бы заплаткой.
-            .scrollContentBackground(.hidden)
+            AppearanceSettingsView()
+                .tabItem { Label("Оформление", systemImage: "paintbrush") }
+
+            ApplicationsSettingsView()
+                .tabItem { Label("Приложения", systemImage: "square.grid.2x2") }
         }
-        .frame(width: Self.width)
+        // Тот же размер, что был у окна: вкладки под него и свёрстаны.
+        .frame(width: Self.width, height: 360)
     }
+}
 
-    private var header: some View {
-        HStack {
-            Text("Настройки")
-                .font(.system(size: 13, weight: .semibold))
-            Spacer()
-            Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 20, height: 20)
-                    .contentShape(Rectangle())
+// MARK: - Основные
+
+struct GeneralSettingsView: View {
+    @EnvironmentObject private var settings: SettingsStore
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Запускать при входе в систему", isOn: Binding(
+                    get: { settings.launchAtLoginPreference },
+                    set: { settings.setLaunchAtLogin($0) }
+                ))
+                Toggle("Показывать иконку в Dock", isOn: $settings.showDockIcon)
+                Toggle("Показывать проценты при наведении", isOn: $settings.showVolumePercentage)
             }
-            .buttonStyle(.plain)
-            .help("Закрыть настройки")
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-    }
-
-    // MARK: - Секции
-
-    private var generalSection: some View {
-        SettingsSection("Основные") {
-            SettingsToggle("Запускать при входе в систему", isOn: Binding(
-                get: { settings.launchAtLoginPreference },
-                set: { settings.setLaunchAtLogin($0) }
-            ))
-            SettingsToggle("Показывать иконку в Dock", isOn: $settings.showDockIcon)
-            SettingsToggle("Показывать проценты при наведении", isOn: $settings.showVolumePercentage)
-        }
+        .formStyle(.grouped)
         .onAppear { settings.syncLoginItem() }
     }
+}
 
-    private var appearanceSection: some View {
-        SettingsSection("Оформление") {
-            HStack(spacing: 14) {
-                ForEach(AppearanceMode.allCases) { mode in
-                    ThemeOption(mode: mode, isSelected: settings.appearanceMode == mode) {
-                        settings.appearanceMode = mode
+// MARK: - Звук
+
+struct AudioSettingsView: View {
+    @EnvironmentObject private var settings: SettingsStore
+    @EnvironmentObject private var viewModel: MixerViewModel
+
+    var body: some View {
+        Form {
+            Section("Устройство вывода") {
+                Picker("Устройство", selection: Binding(
+                    get: { viewModel.outputDevice?.uid ?? "" },
+                    set: { uid in
+                        if let device = viewModel.availableDevices.first(where: { $0.uid == uid }) {
+                            viewModel.selectOutputDevice(device)
+                        }
+                    }
+                )) {
+                    ForEach(viewModel.availableDevices) { device in
+                        Text(device.name).tag(device.uid)
                     }
                 }
             }
 
-            Divider().padding(.vertical, 2)
+            Section("Громкость") {
+                VStack(alignment: .leading) {
+                    HStack {
+                        Text("Громкость по умолчанию для новых приложений")
+                        Spacer()
+                        Text("\(Int(settings.defaultVolume * 100))%")
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                    Slider(value: $settings.defaultVolume, in: 0...1)
+                }
+                Toggle("Запоминать громкость приложений", isOn: $settings.rememberAppVolumes)
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Liquid Glass")
-                    .font(.system(size: 12, weight: .medium))
-                Text("Насколько панель просвечивает то, что под ней")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+// MARK: - Оформление
 
-                HStack(spacing: 14) {
-                    ForEach(PanelMaterial.allCases) { material in
-                        MaterialOption(material: material,
-                                       isSelected: settings.panelMaterial == material) {
-                            settings.panelMaterial = material
+struct AppearanceSettingsView: View {
+    @EnvironmentObject private var settings: SettingsStore
+    @EnvironmentObject private var viewModel: MixerViewModel
+
+    var body: some View {
+        Form {
+            Section {
+                LabeledContent("Оформление") {
+                    HStack(spacing: 14) {
+                        ForEach(AppearanceMode.allCases) { mode in
+                            ThemeOption(
+                                mode: mode,
+                                isSelected: settings.appearanceMode == mode
+                            ) {
+                                settings.appearanceMode = mode
+                            }
                         }
                     }
                 }
-                .padding(.top, 2)
             }
 
-            Divider().padding(.vertical, 2)
-
-            SettingsToggle("Показывать иконки приложений", isOn: $settings.showAppIcons)
-
-            Picker("Стиль слайдера", selection: Binding(
-                get: { settings.sliderStyle },
-                set: { settings.sliderStyle = $0 }
-            )) {
-                ForEach(SliderStyleOption.allCases) { style in
-                    Text(style.title).tag(style)
+            Section {
+                LabeledContent {
+                    HStack(spacing: 14) {
+                        ForEach(PanelMaterial.allCases) { material in
+                            MaterialOption(
+                                material: material,
+                                isSelected: settings.panelMaterial == material
+                            ) {
+                                settings.panelMaterial = material
+                            }
+                        }
+                    }
+                } label: {
+                    Text("Liquid Glass")
+                    Text("Насколько панель просвечивает то, что под ней")
                 }
             }
 
-            HStack {
-                Text("Порядок приложений")
-                Spacer()
-                Text(viewModel.hasCustomOrder ? "Вручную" : "Автоматический")
-                    .foregroundStyle(.secondary)
-                Button("Сбросить") { viewModel.resetOrder() }
-                    .disabled(!viewModel.hasCustomOrder)
-                    .controlSize(.small)
+            Section {
+                Toggle("Показывать иконки приложений", isOn: $settings.showAppIcons)
+                Picker("Стиль слайдера", selection: Binding(
+                    get: { settings.sliderStyle },
+                    set: { settings.sliderStyle = $0 }
+                )) {
+                    ForEach(SliderStyleOption.allCases) { style in
+                        Text(style.title).tag(style)
+                    }
+                }
             }
-        }
-    }
 
-    private var audioSection: some View {
-        SettingsSection("Звук") {
-            VStack(alignment: .leading, spacing: 4) {
+            Section {
                 HStack {
-                    Text("Громкость новых приложений")
+                    Text("Порядок приложений")
                     Spacer()
-                    Text("\(Int(settings.defaultVolume * 100))%")
+                    Text(viewModel.hasCustomOrder ? "Вручную" : "Автоматический")
                         .foregroundStyle(.secondary)
-                        .monospacedDigit()
+                    Button("Сбросить") { viewModel.resetOrder() }
+                        .disabled(!viewModel.hasCustomOrder)
                 }
-                Slider(value: $settings.defaultVolume, in: 0...1)
-            }
-            SettingsToggle("Запоминать громкость приложений", isOn: $settings.rememberAppVolumes)
-        }
-    }
-
-    private var storedAppsSection: some View {
-        SettingsSection("Сохранённые приложения") {
-            if storedEntries.isEmpty {
-                Text("Измените громкость любого приложения — оно появится здесь")
-                    .font(.system(size: 11))
+            } footer: {
+                Text("Строки в панели переставляются перетаскиванием. Автоматически сверху идут те, что играют прямо сейчас.")
+                    .font(.caption)
                     .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            } else {
-                ForEach(storedEntries, id: \.bundleID) { entry in
-                    HStack(spacing: 8) {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(entry.settings.displayName.isEmpty ? entry.bundleID : entry.settings.displayName)
-                                .font(.system(size: 12))
-                                .lineLimit(1)
-                            Text("\(Int(entry.settings.volume * 100))%"
-                                 + (entry.settings.isMuted ? " · заглушено" : "")
-                                 + (entry.settings.isPinned ? " · закреплено" : ""))
-                                .font(.system(size: 10))
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Spacer(minLength: 4)
-
-                        Button {
-                            viewModel.volumeStore.forget(bundleID: entry.bundleID)
-                        } label: {
-                            Image(systemName: "trash")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
-                                .frame(width: 20, height: 20)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .help("Забыть настройки этого приложения")
-                    }
-                }
-
-                Button("Очистить всё", role: .destructive) {
-                    viewModel.volumeStore.forgetAll()
-                }
-                .controlSize(.small)
             }
         }
+        .formStyle(.grouped)
     }
+}
 
-    private var storedEntries: [(bundleID: String, settings: StoredAppSettings)] {
+// MARK: - Приложения
+
+struct ApplicationsSettingsView: View {
+    @EnvironmentObject private var viewModel: MixerViewModel
+
+    private var entries: [(bundleID: String, settings: StoredAppSettings)] {
         viewModel.volumeStore.storage
             .map { ($0.key, $0.value) }
             .sorted { $0.1.lastSeen > $1.1.lastSeen }
     }
-}
-
-/// Строка-переключатель: подпись слева, тумблер справа.
-///
-/// Обычный `Toggle` держит тумблер вплотную к подписи, и строки в колонке
-/// выстраивались лесенкой по длине текста.
-struct SettingsToggle: View {
-
-    let title: String
-    @Binding var isOn: Bool
-
-    init(_ title: String, isOn: Binding<Bool>) {
-        self.title = title
-        self._isOn = isOn
-    }
 
     var body: some View {
-        HStack(spacing: 8) {
-            Text(title)
-            Spacer(minLength: 8)
-            Toggle("", isOn: $isOn)
-                .labelsHidden()
-        }
-        .frame(maxWidth: .infinity)
-    }
-}
+        VStack(spacing: 0) {
+            if entries.isEmpty {
+                ContentUnavailableView(
+                    "Нет сохранённых приложений",
+                    systemImage: "square.grid.2x2",
+                    description: Text("Измените громкость любого приложения — оно появится здесь")
+                )
+            } else {
+                List {
+                    ForEach(entries, id: \.bundleID) { entry in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(entry.settings.displayName.isEmpty ? entry.bundleID : entry.settings.displayName)
+                                    .font(.system(size: 12, weight: .medium))
+                                Text("Громкость: \(Int(entry.settings.volume * 100))%" + (entry.settings.isMuted ? " · заглушено" : ""))
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.secondary)
+                            }
 
-/// Заголовок и рамка одной группы настроек.
-///
-/// Своя, а не `Form`: форма в узкой колонке уводит подписи в перенос и рисует
-/// собственный фон поверх материала панели.
-struct SettingsSection<Content: View>: View {
+                            Spacer()
 
-    let title: String
-    @ViewBuilder let content: () -> Content
+                            Toggle("Запоминать", isOn: Binding(
+                                get: { entry.settings.rememberVolume },
+                                set: { viewModel.volumeStore.setRememberVolume($0, for: entry.bundleID) }
+                            ))
+                            .toggleStyle(.switch)
+                            .controlSize(.mini)
+                            .labelsHidden()
 
-    init(_ title: String, @ViewBuilder content: @escaping () -> Content) {
-        self.title = title
-        self.content = content
-    }
+                            Button {
+                                viewModel.volumeStore.forget(bundleID: entry.bundleID)
+                            } label: {
+                                Image(systemName: "trash")
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                        .padding(.vertical, 3)
+                    }
+                }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
-
-            VStack(alignment: .leading, spacing: 10) {
-                content()
+                HStack {
+                    Spacer()
+                    Button("Очистить всё", role: .destructive) {
+                        viewModel.volumeStore.forgetAll()
+                    }
+                }
+                .padding(10)
             }
-            .font(.system(size: 12))
-            // Тумблеры, а не галочки: панель рядом выглядит как системная,
-            // и галочки в ней смотрелись бы формой из другого приложения.
-            .toggleStyle(.switch)
-            .controlSize(.small)
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(.primary.opacity(0.05))
-            )
         }
     }
 }

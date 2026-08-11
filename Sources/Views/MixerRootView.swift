@@ -27,18 +27,16 @@ struct MixerRootView: View {
     @State private var showsSettings = false
 
     var body: some View {
-        HStack(spacing: 0) {
-            mixer
-
+        // Настройки слева от микшера и без анимации появления: панель и так
+        // возникает целиком, и выезжающая колонка выглядела бы приёмом ради
+        // приёма.
+        HStack(alignment: .top, spacing: 0) {
             if showsSettings {
+                SettingsView()
                 Divider()
-                SettingsPaneView {
-                    withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
-                        showsSettings = false
-                    }
-                }
-                .transition(.move(edge: .trailing).combined(with: .opacity))
             }
+
+            mixer
         }
         .background(settings.panelMaterial.shapeStyle)
         // Подсказка со значением рисуется здесь, поверх всего: внутри списка
@@ -223,9 +221,7 @@ struct MixerRootView: View {
     private var footer: some View {
         HStack(spacing: 4) {
             FooterButton(title: "Настройки", isActive: showsSettings) {
-                withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
-                    showsSettings.toggle()
-                }
+                showsSettings.toggle()
             }
 
             Spacer()
@@ -259,9 +255,8 @@ private struct FooterButton: View {
         Button(action: action) {
             HStack(spacing: 4) {
                 Text(title)
-                Image(systemName: "chevron.right")
+                Image(systemName: isActive ? "chevron.right" : "chevron.left")
                     .font(.system(size: 9, weight: .semibold))
-                    .rotationEffect(.degrees(isActive ? 180 : 0))
                     .foregroundStyle(.tertiary)
             }
                 .font(.system(size: 12))

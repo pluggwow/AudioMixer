@@ -139,6 +139,18 @@ final class AudioProcessMonitor: ObservableObject {
         processes = result
     }
 
+    /// Обычные приложения, которым место в списке только пока они звучат.
+    ///
+    /// Finder держит аудиоклиент постоянно — ради системных звуков и
+    /// предпросмотра, — но собственного звука, которым хотелось бы управлять,
+    /// у него нет. По общему правилу он попадал в список навсегда, потому что
+    /// это `.regular` приложение с иконкой в Dock. Здесь исключение, а не
+    /// чёрный список: если Finder всё-таки заиграет (быстрый просмотр видео),
+    /// строка появится, и громкость ему выставить можно.
+    private static let onlyWhilePlaying: Set<String> = [
+        "com.apple.finder"
+    ]
+
     private func makeInfo(objectID: AudioObjectID) -> AudioProcessInfo? {
         // PID может исчезнуть между получением списка и чтением свойств —
         // это нормальная гонка, просто пропускаем процесс.
@@ -159,7 +171,9 @@ final class AudioProcessMonitor: ObservableObject {
         // заранее. Фоновых агентов (Пункт управления, PowerChime, MonitorControl,
         // loginwindow) — только пока они реально звучат: иначе они забивают
         // список тем, чем управлять незачем.
-        guard owner.app.activationPolicy == .regular || isRunning else { return nil }
+        let alwaysVisible = owner.app.activationPolicy == .regular
+            && !Self.onlyWhilePlaying.contains(bundleID)
+        guard alwaysVisible || isRunning else { return nil }
 
         return AudioProcessInfo(
             objectID: objectID,

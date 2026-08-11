@@ -14,10 +14,13 @@
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+	<!-- Подстановкой, а не числом: иначе версия живёт в двух местах и
+	     расходится. Здесь она была 1.0, пока в project.yml стояла 0.1.0 —
+	     приложение рапортовало одно, тег в git говорил другое. -->
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<!-- Обязателен для process tap: без этого ключа TCC (kTCCServiceAudioCapture)
 	     не покажет запрос, а система завершит процесс при первой попытке
 	     создать tap. Текст видит пользователь в системном диалоге. -->

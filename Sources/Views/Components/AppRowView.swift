@@ -149,6 +149,21 @@ struct AppRowView: View {
             Divider()
 
             Button(app.isPinned ? "Открепить" : "Закрепить", action: onTogglePin)
+
+            Divider()
+
+            // Тот же выбор, что под кнопкой в строке. Здесь он нужен ещё и
+            // потому, что кнопку можно выключить в настройках — тогда правая
+            // кнопка остаётся единственным способом увести приложение.
+            Menu("Источник") {
+                OutputDevicePicker(
+                    selectedUID: app.outputDeviceUID,
+                    availableDevices: availableDevices,
+                    systemDefaultTitle: "Как в системе",
+                    onSelect: onSelectOutput
+                )
+            }
+            .disabled(availableDevices.isEmpty)
         }
     }
 

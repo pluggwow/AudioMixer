@@ -31,24 +31,14 @@ struct OutputDeviceMenu<Content: View>: View {
     var fixedSize: Bool = false
     @ViewBuilder let content: () -> Content
 
-    /// Пустая строка вместо nil: тег пункта меню должен быть непустым типом,
-    /// а Optional<String> в Picker ведёт себя капризно.
-    private static var systemTag: String { "" }
-
     var body: some View {
         Menu {
-            Picker("", selection: selection) {
-                if let systemDefaultTitle {
-                    Label(systemDefaultTitle, systemImage: "speaker.wave.2")
-                        .tag(Self.systemTag)
-                }
-                ForEach(availableDevices) { candidate in
-                    Label(candidate.name, systemImage: candidate.symbolName)
-                        .tag(candidate.uid)
-                }
-            }
-            .pickerStyle(.inline)
-            .labelsHidden()
+            OutputDevicePicker(
+                selectedUID: selectedUID,
+                availableDevices: availableDevices,
+                systemDefaultTitle: systemDefaultTitle,
+                onSelect: onSelect
+            )
         } label: {
             content()
         }
@@ -59,6 +49,39 @@ struct OutputDeviceMenu<Content: View>: View {
         .controlSize(.large)
         .modifier(FixedSizeIfNeeded(enabled: fixedSize))
         .disabled(availableDevices.isEmpty)
+    }
+
+}
+
+/// Сам список устройств с галочкой у текущего.
+///
+/// Отдельно от `OutputDeviceMenu`, потому что мест два: кнопка в строке и
+/// подменю «Источник» по правой кнопке. Логика выбора при этом одна — иначе
+/// два списка рано или поздно разойдутся в поведении.
+struct OutputDevicePicker: View {
+
+    let selectedUID: String?
+    let availableDevices: [AudioDeviceInfo]
+    var systemDefaultTitle: String?
+    let onSelect: (String?) -> Void
+
+    /// Пустая строка вместо nil: тег пункта меню должен быть непустым типом,
+    /// а Optional<String> в Picker ведёт себя капризно.
+    private static var systemTag: String { "" }
+
+    var body: some View {
+        Picker("", selection: selection) {
+            if let systemDefaultTitle {
+                Label(systemDefaultTitle, systemImage: "speaker.wave.2")
+                    .tag(Self.systemTag)
+            }
+            ForEach(availableDevices) { candidate in
+                Label(candidate.name, systemImage: candidate.symbolName)
+                    .tag(candidate.uid)
+            }
+        }
+        .pickerStyle(.inline)
+        .labelsHidden()
     }
 
     private var selection: Binding<String> {

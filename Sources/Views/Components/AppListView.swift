@@ -20,6 +20,7 @@ struct AppListView: View {
     let showPercentage: Bool
     let sliderStyle: SliderStyleOption
     let availableDevices: [AudioDeviceInfo]
+    let metrics: RowMetrics
 
     /// Высота видимой области списка — по ней определяются краевые зоны автопрокрутки.
     let viewportHeight: CGFloat
@@ -32,11 +33,6 @@ struct AppListView: View {
     let onMove: (Int, Int) -> Void
     let onDragBegan: () -> Void
     let onDragEnded: () -> Void
-
-    /// Высота строки. Строка задаёт её сама (`AppRowView.height`), поэтому
-    /// значение точное, а не оценочное: по нему и панель считает свой размер,
-    /// и перетаскивание — шаг сетки.
-    static var rowHeight: CGFloat { AppRowView.height }
 
     /// Система координат видимой области. Задаётся снаружи, на ScrollView:
     /// позиция курсора нужна относительно окна списка, а не относительно
@@ -82,6 +78,7 @@ struct AppListView: View {
             showPercentage: showPercentage,
             sliderStyle: sliderStyle,
             availableDevices: availableDevices,
+            metrics: metrics,
             isDragged: isDragged,
             onVolumeChange: { onVolumeChange(app.bundleID, $0) },
             onToggleMute: { onToggleMute(app.bundleID) },
@@ -108,7 +105,7 @@ struct AppListView: View {
 
     /// Шаг сетки: на столько сдвигается соседняя строка, уступая место.
     private var step: CGFloat {
-        let height = measuredRowHeight > 0 ? measuredRowHeight : Self.rowHeight
+        let height = measuredRowHeight > 0 ? measuredRowHeight : metrics.rowHeight
         return height + Self.rowSpacing
     }
 

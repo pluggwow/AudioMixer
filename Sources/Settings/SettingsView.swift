@@ -54,7 +54,6 @@ struct GeneralSettingsView: View {
                     set: { settings.setLaunchAtLogin($0) }
                 ))
                 Toggle("Показывать иконку в Dock", isOn: $settings.showDockIcon)
-                Toggle("Показывать проценты при наведении", isOn: $settings.showVolumePercentage)
             }
         }
         .formStyle(.grouped)
@@ -145,7 +144,45 @@ struct AppearanceSettingsView: View {
             }
 
             Section {
+                Picker("Ширина панели", selection: Binding(
+                    get: { settings.panelWidth },
+                    set: { settings.panelWidth = $0 }
+                )) {
+                    ForEach(PanelWidthOption.allCases) { option in
+                        Text(option.title).tag(option)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                Picker("Высота строки", selection: Binding(
+                    get: { settings.rowDensity },
+                    set: { settings.rowDensity = $0 }
+                )) {
+                    ForEach(RowDensity.allCases) { option in
+                        Text(option.title).tag(option)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                Picker("Строк до прокрутки", selection: Binding(
+                    get: { settings.visibleRows },
+                    set: { settings.visibleRows = $0 }
+                )) {
+                    ForEach(VisibleRowsOption.allCases) { option in
+                        Text(option.title).tag(option)
+                    }
+                }
+                .pickerStyle(.segmented)
+            } footer: {
+                Text("Свободная ширина достаётся названию приложения: слайдер своей длины не меняет, пока она есть.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
                 Toggle("Показывать иконки приложений", isOn: $settings.showAppIcons)
+                Toggle("Показывать значок устройства в строке", isOn: $settings.showOutputButton)
+                Toggle("Показывать проценты при наведении", isOn: $settings.showVolumePercentage)
                 Picker("Стиль слайдера", selection: Binding(
                     get: { settings.sliderStyle },
                     set: { settings.sliderStyle = $0 }

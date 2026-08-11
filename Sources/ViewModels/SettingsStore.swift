@@ -60,6 +60,77 @@ enum PanelMaterial: String, CaseIterable, Identifiable {
     }
 }
 
+/// Высота строки приложения.
+enum RowDensity: String, CaseIterable, Identifiable {
+    case compact, normal, large
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .compact: return "Компактная"
+        case .normal:  return "Обычная"
+        case .large:   return "Крупная"
+        }
+    }
+
+    var rowHeight: CGFloat {
+        switch self {
+        case .compact: return 30
+        case .normal:  return 38
+        case .large:   return 46
+        }
+    }
+}
+
+/// Ширина панели. Лишнее место достаётся названию приложения: слайдер своей
+/// ширины не меняет, пока она есть.
+enum PanelWidthOption: String, CaseIterable, Identifiable {
+    case narrow, normal, wide
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .narrow: return "Узкая"
+        case .normal: return "Обычная"
+        case .wide:   return "Широкая"
+        }
+    }
+
+    var points: CGFloat {
+        switch self {
+        case .narrow: return 320
+        case .normal: return 360
+        case .wide:   return 420
+        }
+    }
+}
+
+/// Сколько строк видно до прокрутки.
+enum VisibleRowsOption: String, CaseIterable, Identifiable {
+    case three, fourAndHalf, six, eight
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .three:       return "3"
+        case .fourAndHalf: return "4,5"
+        case .six:         return "6"
+        case .eight:       return "8"
+        }
+    }
+
+    /// Половина строки в 4,5 — не прихоть: она сразу говорит, что список
+    /// продолжается, иначе о прокрутке можно и не догадаться.
+    var count: CGFloat {
+        switch self {
+        case .three:       return 3
+        case .fourAndHalf: return 4.5
+        case .six:         return 6
+        case .eight:       return 8
+        }
+    }
+}
+
 enum SliderStyleOption: String, CaseIterable, Identifiable {
     case capsule, thin
     var id: String { rawValue }
@@ -80,6 +151,10 @@ final class SettingsStore: ObservableObject {
     }
     @AppStorage("showAppIcons") var showAppIcons: Bool = true
     @AppStorage("panelMaterial") var panelMaterialRaw: String = PanelMaterial.translucent.rawValue
+    @AppStorage("rowDensity") var rowDensityRaw: String = RowDensity.normal.rawValue
+    @AppStorage("panelWidth") var panelWidthRaw: String = PanelWidthOption.normal.rawValue
+    @AppStorage("visibleRows") var visibleRowsRaw: String = VisibleRowsOption.fourAndHalf.rawValue
+    @AppStorage("showOutputButton") var showOutputButton: Bool = true
     @AppStorage("sliderStyle") var sliderStyleRaw: String = SliderStyleOption.capsule.rawValue
     @AppStorage("launchAtLogin") var launchAtLoginPreference: Bool = false
 
@@ -91,6 +166,28 @@ final class SettingsStore: ObservableObject {
     var panelMaterial: PanelMaterial {
         get { PanelMaterial(rawValue: panelMaterialRaw) ?? .translucent }
         set { panelMaterialRaw = newValue.rawValue }
+    }
+
+    var rowDensity: RowDensity {
+        get { RowDensity(rawValue: rowDensityRaw) ?? .normal }
+        set { rowDensityRaw = newValue.rawValue }
+    }
+
+    var panelWidth: PanelWidthOption {
+        get { PanelWidthOption(rawValue: panelWidthRaw) ?? .normal }
+        set { panelWidthRaw = newValue.rawValue }
+    }
+
+    var visibleRows: VisibleRowsOption {
+        get { VisibleRowsOption(rawValue: visibleRowsRaw) ?? .fourAndHalf }
+        set { visibleRowsRaw = newValue.rawValue }
+    }
+
+    /// Размеры строки под текущие настройки.
+    var rowMetrics: RowMetrics {
+        RowMetrics(panelWidth: panelWidth.points,
+                   rowHeight: rowDensity.rowHeight,
+                   showsOutputButton: showOutputButton)
     }
 
     var sliderStyle: SliderStyleOption {

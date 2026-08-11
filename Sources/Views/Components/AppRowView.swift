@@ -16,6 +16,8 @@ struct AppRowView: View {
     let sliderStyle: SliderStyleOption
     /// Для выбора устройства прямо в строке.
     var availableDevices: [AudioDeviceInfo] = []
+    /// Размеры под текущие настройки.
+    var metrics: RowMetrics
     /// Строку сейчас тащат мышью.
     var isDragged: Bool = false
 
@@ -28,18 +30,14 @@ struct AppRowView: View {
     @State private var isHovering = false
     @State private var isNameHovering = false
 
-    /// Высота строки задаётся, а не выводится из содержимого: по ней панель
-    /// считает свой размер, а перетаскивание — шаг сетки.
-    static let height: CGFloat = 38
-
-    private let iconSize = RowMetrics.icon
-    private let muteSize = RowMetrics.button
-    private let outputSize = RowMetrics.button
-    private let spacing = RowMetrics.spacing
+    private var iconSize: CGFloat { metrics.icon }
+    private var muteSize: CGFloat { metrics.button }
+    private var outputSize: CGFloat { metrics.button }
+    private var spacing: CGFloat { metrics.spacing }
 
     /// Имя не поместилось в отведённую колонку и обрезано многоточием.
     private var isNameTruncated: Bool {
-        RowMetrics.width(of: app, includingPin: app.isPinned) > RowMetrics.nameWidth
+        RowMetrics.width(of: app, includingPin: app.isPinned) > metrics.nameWidth
     }
 
     /// Устройство, в которое уведено приложение. nil — звучит как все.
@@ -72,7 +70,7 @@ struct AppRowView: View {
 
                 Spacer(minLength: 0)
             }
-            .frame(width: RowMetrics.nameWidth, alignment: .leading)
+            .frame(width: metrics.nameWidth, alignment: .leading)
             .contentShape(Rectangle())
             .onHover { hovering in
                 isNameHovering = hovering
@@ -102,7 +100,7 @@ struct AppRowView: View {
                 accentTint: (app.isSilent || !app.isRunning) ? .secondary : nil,
                 hoverLabel: showPercentage ? (app.isMuted ? "Выкл." : app.percentText) : nil
             )
-            .frame(width: RowMetrics.sliderWidth)
+            .frame(width: metrics.sliderWidth)
 
             Button(action: onToggleMute) {
                 Image(systemName: app.speakerSymbol)
@@ -115,7 +113,7 @@ struct AppRowView: View {
             .contentTransition(.symbolEffect(.replace))
             .help(app.isMuted ? "Включить звук" : "Заглушить")
 
-            outputButton
+            if metrics.showsOutputButton { outputButton }
         }
         // Закреплённое, но закрытое приложение — бесцветная строка.
         // Обесцвечивается всё разом, вместе с заливкой слайдера: так сразу
@@ -125,7 +123,7 @@ struct AppRowView: View {
         .opacity(app.isRunning ? 1 : 0.55)
         .animation(.easeInOut(duration: 0.2), value: app.isRunning)
         .padding(.horizontal, 6)
-        .frame(height: Self.height)
+        .frame(height: metrics.rowHeight)
         // Без contentShape кликом ловятся только сами иконка, текст и слайдер,
         // а промежутки между ними — нет, и строка отзывается через раз.
         .contentShape(Rectangle())
@@ -207,29 +205,42 @@ struct AppRowView: View {
 // MARK: - Размеры строки
 
 /// Размеры строки в одном месте: по ним же панель считает свою ширину, а
-/// строка — помещается ли название.
-enum RowMetrics {
+/// строка — помещается ли название. Считаются от настроек, а не заданы
+/// константами: ширина панели, высота строки и наличие кнопки вывода
+/// настраиваются.
+struct RowMetrics {
 
-    /// Ширина панели живёт здесь, а не в MixerRootView: строке она нужна,
-    /// чтобы знать, сколько остаётся названию.
-    static let panelWidth: CGFloat = 360
-    static let panelPadding: CGFloat = 14
-    static let rowPadding: CGFloat = 6
+    let panelWidth: CGFloat
+    let rowHeight: CGFloat
+    let showsOutputButton: Bool
 
-    static let icon: CGFloat = 22
-    static let button: CGFloat = 18
-    static let spacing: CGFloat = 7
+    let panelPadding: CGFloat = 14
+    let rowPadding: CGFloat = 6
+    let icon: CGFloat = 22
+    let button: CGFloat = 18
+    let spacing: CGFloat = 7
 
-    /// Слайдер фиксированной длины. Считать его по остатку заманчиво —
-    /// при коротких названиях он был бы длиннее, — но тогда он прыгает
-    /// вбок каждый раз, когда в списке появляется приложение с длинным
-    /// именем: колонка названий общая на весь список.
-    static let sliderWidth: CGFloat = 165
+    /// Желаемая длина слайдера. Фиксированная, чтобы он не прыгал вбок при
+    /// смене состава списка, но на узкой панели уступает место названию —
+    /// иначе имени осталось бы 29 pt, то есть ничего.
+    private let preferredSliderWidth: CGFloat = 165
+    /// Меньше названию отдавать нельзя: короткие имена вроде Safari перестают
+    /// помещаться целиком.
+    private let minimumNameWidth: CGFloat = 69
 
-    /// Названию достаётся остаток строки.
-    static var nameWidth: CGFloat {
-        panelWidth - panelPadding * 2 - rowPadding * 2
-            - icon - button * 2 - spacing * 4 - sliderWidth
+    /// Сколько остаётся строке под название и слайдер вместе.
+    private var available: CGFloat {
+        let buttons = button * (showsOutputButton ? 2 : 1)
+        let gaps = spacing * (showsOutputButton ? 4 : 3)
+        return panelWidth - panelPadding * 2 - rowPadding * 2 - icon - buttons - gaps
+    }
+
+    var nameWidth: CGFloat {
+        max(minimumNameWidth, available - preferredSliderWidth)
+    }
+
+    var sliderWidth: CGFloat {
+        max(available - nameWidth, 80)
     }
 
     // MARK: Название

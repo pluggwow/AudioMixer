@@ -18,10 +18,11 @@ struct MixerRootView: View {
     @EnvironmentObject private var viewModel: MixerViewModel
     @EnvironmentObject private var settings: SettingsStore
 
-    /// Ширина и отступы живут в RowMetrics: строке они нужны, чтобы знать,
-    /// сколько остаётся названию при фиксированном слайдере.
-    private let panelWidth = RowMetrics.panelWidth
-    private let sidePadding = RowMetrics.panelPadding
+    /// Размеры считаются от настроек: ширина панели, высота строки и наличие
+    /// кнопки вывода настраиваются, а название с слайдером делят остаток.
+    private var metrics: RowMetrics { settings.rowMetrics }
+    private var panelWidth: CGFloat { metrics.panelWidth }
+    private var sidePadding: CGFloat { metrics.panelPadding }
 
     /// Окно настроек — отдельное, но привязанное к панели: открывается слева
     /// от неё и не забирает фокус, поэтому панель остаётся на экране.
@@ -168,6 +169,7 @@ struct MixerRootView: View {
                             showPercentage: settings.showVolumePercentage,
                             sliderStyle: settings.sliderStyle,
                             availableDevices: viewModel.availableDevices,
+                            metrics: metrics,
                             viewportHeight: scrollHeight,
                             scrollProxy: scrollProxy,
                             onVolumeChange: { bundleID, volume in
@@ -199,10 +201,8 @@ struct MixerRootView: View {
     }
 
     private var scrollHeight: CGFloat {
-        let step = AppListView.rowHeight + AppListView.rowSpacing
-        // Четыре с половиной строки: половина пятой сразу говорит, что список
-        // продолжается, — без неё непонятно, что панель вообще прокручивается.
-        let visible = min(CGFloat(viewModel.apps.count), 4.5)
+        let step = metrics.rowHeight + AppListView.rowSpacing
+        let visible = min(CGFloat(viewModel.apps.count), settings.visibleRows.count)
         guard visible > 0 else { return 0 }
         return visible * step - AppListView.rowSpacing
     }

@@ -30,6 +30,7 @@
 		68E8C8D0F58E12146BECCE8A /* MasterVolumeSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = F57BE6D30AC2AA5FA1152467 /* MasterVolumeSection.swift */; };
 		83BC8843F8FEBC351E35928D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 308E8BD77A229B614B6F4696 /* AppDelegate.swift */; };
 		85AA62D1CDD15540CE5B1625 /* ServiceManagement.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 49C5B53B91BD4BBEC37598FF /* ServiceManagement.framework */; };
+		A9293257856FCAC965594D2C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 24316766AB950FACA2E58186 /* Assets.xcassets */; };
 		BAE08FD32469E87C8234D87F /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC96038FFDF693487FAB7CE7 /* AppContainer.swift */; };
 		C3CCAB6F9FB9DD285ED2E590 /* PermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04B79B2F51B2AC2319692757 /* PermissionManager.swift */; };
 		C88AC38B120737C8C09B46D8 /* AudioMixerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 792AF0CBB112264987BF147D /* AudioMixerApp.swift */; };
@@ -46,6 +47,7 @@
 		0FDFD0758F5713FE7D579E4B /* VolumeSlider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeSlider.swift; sourceTree = "<group>"; };
 		183D42D1B9FA2E8C6B211111 /* AudioDeviceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDeviceManager.swift; sourceTree = "<group>"; };
 		1BE98D57250B9E7793A273CF /* MixerRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MixerRootView.swift; sourceTree = "<group>"; };
+		24316766AB950FACA2E58186 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2A469DA70067B7D58F6496EF /* AppListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppListView.swift; sourceTree = "<group>"; };
 		308E8BD77A229B614B6F4696 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		3CD6A2586AC5BBC885207676 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
@@ -130,6 +132,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		528288EA3E3D8FDDF5832815 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				24316766AB950FACA2E58186 /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 		664070A4E23668732962AEB4 /* Views */ = {
 			isa = PBXGroup;
 			children = (
@@ -142,6 +152,7 @@
 		6D2AAF30EC60768B92DD258C = {
 			isa = PBXGroup;
 			children = (
+				528288EA3E3D8FDDF5832815 /* Resources */,
 				176A379C14D43719C3FBAF09 /* Sources */,
 				86F9D31DA634BF037AE34C67 /* Frameworks */,
 				1C6974655924C28A41FEE912 /* Products */,
@@ -224,6 +235,7 @@
 			buildConfigurationList = 06AFE8D968B0C0B20311C5CD /* Build configuration list for PBXNativeTarget "AudioMixer" */;
 			buildPhases = (
 				24E5F65BEA9CD8EE79A11CAD /* Sources */,
+				09CED9A5AC3454435266EC14 /* Resources */,
 				3496BE82FD777C0FF80EBFD3 /* Frameworks */,
 			);
 			buildRules = (
@@ -266,6 +278,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		09CED9A5AC3454435266EC14 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A9293257856FCAC965594D2C /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		24E5F65BEA9CD8EE79A11CAD /* Sources */ = {

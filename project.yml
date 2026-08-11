@@ -27,6 +27,10 @@ targets:
     platform: macOS
     sources:
       - path: Sources
+      # Иконка приложения. Рисуется генератором Tools/GenerateAppIcon.swift,
+      # чтобы все десять размеров выходили из одного источника, а не из
+      # ручного масштабирования картинки.
+      - path: Resources/Assets.xcassets
     # Блока info: здесь намеренно нет. Он не «указывает на файл», а ГЕНЕРИРУЕТ
     # его — то есть каждый `xcodegen generate` затирал наш Resources/Info.plist
     # вместе с NSAudioCaptureUsageDescription, без которого система убивает
@@ -39,6 +43,7 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Resources/Info.plist
         SWIFT_EMIT_LOC_STRINGS: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # Раньше team ID жил только в сгенерированном pbxproj, и каждый
         # `xcodegen generate` его терял. Локальные сборки идут с ad-hoc
         # подписью и переопределяют DEVELOPMENT_TEAM пустым — на них это

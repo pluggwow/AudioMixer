@@ -208,6 +208,14 @@ struct MixerRootView: View {
     /// на передний план само: окно настроек открывается позади всех остальных,
     /// и со стороны это выглядит как «кнопка не работает».
     private func openSettingsWindow() {
+        // Панель менюбара — это окно, которое сейчас в фокусе. Система
+        // закрывает его, как только фокус уходит на настройки, поэтому
+        // запоминаем его заранее и возвращаем на экран следом.
+        let panel = NSApp.keyWindow
+        AppLog.engine.info(
+            "Панель менюбара: \(panel.map { String(describing: type(of: $0)) } ?? "не найдена", privacy: .public)"
+        )
+
         openSettings()
         NSApp.activate()
 
@@ -215,11 +223,16 @@ struct MixerRootView: View {
         // цикла событий. orderFrontRegardless нужен потому, что у .accessory
         // приложения makeKeyAndOrderFront срабатывает не всегда.
         DispatchQueue.main.async {
-            guard let window = NSApp.windows.first(where: {
+            if let window = NSApp.windows.first(where: {
                 $0.frameAutosaveName == "com_apple_SwiftUI_Settings_window"
-            }) else { return }
-            window.makeKeyAndOrderFront(nil)
-            window.orderFrontRegardless()
+            }) {
+                window.makeKeyAndOrderFront(nil)
+                window.orderFrontRegardless()
+            }
+
+            // Панель возвращаем ПОСЛЕ настроек и без передачи фокуса: иначе
+            // она снова его перехватит, а настройки уйдут назад.
+            panel?.orderFrontRegardless()
         }
     }
 

@@ -45,7 +45,11 @@ enum PanelMaterial: String, CaseIterable, Identifiable {
 
     var shapeStyle: AnyShapeStyle {
         switch self {
-        case .translucent: return AnyShapeStyle(.ultraThinMaterial)
+        // Самого тонкого системного материала мало: панель менюбара рисует
+        // под нами свою подложку, и наш слой ложится поверх неё вторым —
+        // получается плотнее, чем у системных панелей. Приглушаем свой слой,
+        // чтобы сквозь него работала подложка, а не два стекла подряд.
+        case .translucent: return AnyShapeStyle(.ultraThinMaterial.opacity(0.5))
         case .solid:       return AnyShapeStyle(.thickMaterial)
         }
     }

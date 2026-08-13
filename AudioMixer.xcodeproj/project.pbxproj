@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		04F3BF7CF1FFEEB52FC39CD6 /* MixerPanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9AF2FFC5F2F96149C50A371 /* MixerPanelController.swift */; };
 		06E1B62D97CA1A6CD3725CCD /* AudioAppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF8395A6CFA1A3E3DA9E8B51 /* AudioAppState.swift */; };
 		07252783E028BCF01CC6961D /* SystemVolumeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DD9661B0033328DA6478A32 /* SystemVolumeController.swift */; };
 		0938A3315D24DC53BB545585 /* CoreAudioUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59B6AA82DD56A91CD812DA5E /* CoreAudioUtilities.swift */; };
@@ -37,6 +38,7 @@
 		DF200CC8A9F953B537572D3E /* AudioDeviceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 183D42D1B9FA2E8C6B211111 /* AudioDeviceManager.swift */; };
 		DFC85A460EAB861F36752BDC /* AppOrderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FFEBFEAD8C05EF6D0019BB6 /* AppOrderStore.swift */; };
 		E4B78F2277C37AC8A67B3BD3 /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E4BD3ACA6E5B5C15E922F992 /* Accelerate.framework */; };
+		FC86414D4A9BA5ECC59D3795 /* NonKeyPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DB3549DA254361FFB5004D1 /* NonKeyPanel.swift */; };
 		FD210C53A3CCF9369728B7CD /* VolumeSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FDFD0758F5713FE7D579E4B /* VolumeSlider.swift */; };
 		FECF4138552B48AFA107F161 /* AppRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A66C67512A32AB272CAA5857 /* AppRowView.swift */; };
 /* End PBXBuildFile section */
@@ -49,6 +51,7 @@
 		1BE98D57250B9E7793A273CF /* MixerRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MixerRootView.swift; sourceTree = "<group>"; };
 		24316766AB950FACA2E58186 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2A469DA70067B7D58F6496EF /* AppListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppListView.swift; sourceTree = "<group>"; };
+		2DB3549DA254361FFB5004D1 /* NonKeyPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NonKeyPanel.swift; sourceTree = "<group>"; };
 		308E8BD77A229B614B6F4696 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		3CD6A2586AC5BBC885207676 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
 		495408255CA07555F2541C41 /* AppIconProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconProvider.swift; sourceTree = "<group>"; };
@@ -75,6 +78,7 @@
 		E4BD3ACA6E5B5C15E922F992 /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
 		E4FF5D87A9AD38E2429BD82A /* AudioProcessMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioProcessMonitor.swift; sourceTree = "<group>"; };
 		F57BE6D30AC2AA5FA1152467 /* MasterVolumeSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MasterVolumeSection.swift; sourceTree = "<group>"; };
+		F9AF2FFC5F2F96149C50A371 /* MixerPanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MixerPanelController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -109,10 +113,19 @@
 				0B637479DAC7525000D4CD30 /* Models */,
 				850F5241E791DFC1521BF874 /* Services */,
 				19A855B03BB0425EB3C3BBB2 /* Settings */,
+				182BBB7054D21EBAC6A25974 /* Utilities */,
 				7659BD43DB443BC558DC5A55 /* ViewModels */,
 				664070A4E23668732962AEB4 /* Views */,
 			);
 			path = Sources;
+			sourceTree = "<group>";
+		};
+		182BBB7054D21EBAC6A25974 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				2DB3549DA254361FFB5004D1 /* NonKeyPanel.swift */,
+			);
+			path = Utilities;
 			sourceTree = "<group>";
 		};
 		19A855B03BB0425EB3C3BBB2 /* Settings */ = {
@@ -223,6 +236,7 @@
 				DC96038FFDF693487FAB7CE7 /* AppContainer.swift */,
 				308E8BD77A229B614B6F4696 /* AppDelegate.swift */,
 				792AF0CBB112264987BF147D /* AudioMixerApp.swift */,
+				F9AF2FFC5F2F96149C50A371 /* MixerPanelController.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -310,8 +324,10 @@
 				0938A3315D24DC53BB545585 /* CoreAudioUtilities.swift in Sources */,
 				1A462AFF3D68FC722B0B3DE8 /* LoginItemService.swift in Sources */,
 				68E8C8D0F58E12146BECCE8A /* MasterVolumeSection.swift in Sources */,
+				04F3BF7CF1FFEEB52FC39CD6 /* MixerPanelController.swift in Sources */,
 				2E8BD1A95E24226BD222274E /* MixerRootView.swift in Sources */,
 				537AD556AB642AF8B0FD0321 /* MixerViewModel.swift in Sources */,
+				FC86414D4A9BA5ECC59D3795 /* NonKeyPanel.swift in Sources */,
 				14E6CF6FDE2097AF623B1E52 /* OutputDeviceMenu.swift in Sources */,
 				C3CCAB6F9FB9DD285ED2E590 /* PermissionManager.swift in Sources */,
 				17CA0DF29CCE65EC4317B1C5 /* RenderState.swift in Sources */,

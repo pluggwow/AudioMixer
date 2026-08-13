@@ -37,6 +37,10 @@ final class SettingsPanelController: NSObject, ObservableObject {
 
     private var panel: NSPanel?
     private var hosting: NSHostingView<AnyView>?
+
+    /// Окно настроек наружу: панель микшера проверяет по нему, что клик пришёл
+    /// в своё окно, и не закрывается.
+    var window: NSWindow? { panel }
     private var selectedTab: SettingsTab = .general
 
     /// Зазор между окном настроек и панелью микшера.
@@ -201,14 +205,4 @@ extension SettingsPanelController: NSWindowDelegate {
         // Крестик в заголовке — тот же путь, что и кнопка в подвале.
         isVisible = false
     }
-}
-
-/// Окно, которое не становится ключевым ни при каких обстоятельствах.
-///
-/// Панель менюбара закрывается, как только теряет фокус. `becomesKeyOnlyIfNeeded`
-/// от этого не спасает: контрол, которому фокус нужен, всё равно его запросит,
-/// и панель закроется — не при каждом клике, поэтому и выглядит случайностью.
-private final class NonKeyPanel: NSPanel {
-    override var canBecomeKey: Bool { false }
-    override var canBecomeMain: Bool { false }
 }

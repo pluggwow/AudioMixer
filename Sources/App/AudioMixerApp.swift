@@ -9,36 +9,22 @@ import SwiftUI
 struct AudioMixerApp: App {
 
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @StateObject private var container = AppContainer.shared
 
     var body: some Scene {
-        MenuBarExtra {
-            MixerRootView()
-                .environmentObject(container.mixerViewModel)
-                .environmentObject(container.settings)
+        // Сцена-пустышка. Значок в менюбаре и панель делает MixerPanelController
+        // на AppKit — окно MenuBarExtra приносило собственную подложку, которая
+        // затягивала в панель отражения строки меню (подробности там же).
+        //
+        // Сама сцена всё равно нужна: без неё App нечего вернуть из body, а
+        // именно на App висит @NSApplicationDelegateAdaptor. isInserted: false
+        // означает, что своего значка эта сцена не добавляет.
+        MenuBarExtra(isInserted: .constant(false)) {
+            EmptyView()
         } label: {
-            MenuBarIcon(systemVolume: container.mixerViewModel.systemVolume)
+            EmptyView()
         }
-        .menuBarExtraStyle(.window)
-        // Сцены Settings нет намеренно: настройки открываются второй колонкой
-        // той же панели. Отдельное окно забирало фокус, панель от этого
+        // Сцены Settings нет намеренно: настройки открываются своим окном
+        // рядом с панелью. Отдельное окно забирало фокус, панель от этого
         // закрывалась, и результат правок было не видно.
-    }
-}
-
-/// Значок в строке меню — такой же динамик, как у системного регулятора
-/// громкости, и так же отзывается на её уровень.
-///
-/// Отдельный View, а не Image прямо в label: @StateObject на контейнере
-/// следит только за самим контейнером, а уровень громкости живёт во вложенном
-/// объекте — без своего @ObservedObject значок замер бы на состоянии,
-/// в котором приложение запустилось.
-private struct MenuBarIcon: View {
-
-    @ObservedObject var systemVolume: SystemVolumeController
-
-    var body: some View {
-        Image(systemName: systemVolume.symbolName)
-            .contentTransition(.symbolEffect(.replace))
     }
 }

@@ -30,7 +30,20 @@ struct MixerRootView: View {
 
     var body: some View {
         mixer
-        .background(settings.panelMaterial.shapeStyle)
+        // Два слоя, как и было: подложка окна плюс наше стекло поверх неё.
+        //
+        // Разница с прежним в том, чья подложка. Раньше её приносило окно
+        // MenuBarExtra, и вместе с ней — отражения менюбара: та подложка
+        // затягивает содержимое из-за верхней кромки, а над кромкой лежит
+        // строка меню. Теперь подложка своя, в своём окне, и отражений у неё
+        // нет — проверено снимком верхней кромки.
+        .background {
+            PanelBackdrop()
+            Rectangle().fill(settings.panelMaterial.shapeStyle)
+        }
+        // Скругление раньше давало окно MenuBarExtra. Своё окно безрамочное,
+        // поэтому форму задаём здесь — по ней же система строит тень.
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         // Подсказка со значением рисуется здесь, поверх всего: внутри списка
         // её обрезал бы ScrollView, а внутри строки не хватает высоты.
         .overlayPreferenceValue(HoverTipKey.self) { tip in
@@ -214,7 +227,9 @@ struct MixerRootView: View {
             FooterButton(title: "Настройки", isActive: settingsPanel.isVisible) {
                 // Ключевое окно в этот момент — сама панель микшера: по ней
                 // и позиционируем настройки.
-                settingsPanel.toggle(nextTo: NSApp.keyWindow)
+                // Раньше здесь стоял NSApp.keyWindow. Панель теперь своё окно,
+                // и спрашивать надо прямо у неё.
+                settingsPanel.toggle(nextTo: MixerPanelController.shared.window)
             }
 
             Spacer()
@@ -233,6 +248,34 @@ struct MixerRootView: View {
             .help("Завершить AudioMixer")
         }
     }
+}
+
+/// Подложка панели — то, что раньше давало окно `MenuBarExtra`.
+///
+/// На macOS 26 это Liquid Glass, `NSGlassEffectView`: судя по всему, окно
+/// MenuBarExtra использует именно его, и попытка подменить подложку обычным
+/// материалом дала заметно более тёмную панель. На системах постарше API нет,
+/// там `NSVisualEffectView` с материалом меню — ближайшее, что есть.
+///
+/// `.behindWindow` размывает то, что за окном, то есть рабочий стол. Работает
+/// это только в своём окне: у него `isOpaque = false` и прозрачный фон.
+private struct PanelBackdrop: NSViewRepresentable {
+
+    func makeNSView(context: Context) -> NSView {
+        if #available(macOS 26.0, *) {
+            let glass = NSGlassEffectView()
+            glass.cornerRadius = 0   // форму задаёт clipShape снаружи
+            return glass
+        }
+
+        let view = NSVisualEffectView()
+        view.material = .menu
+        view.blendingMode = .behindWindow
+        view.state = .active
+        return view
+    }
+
+    func updateNSView(_ view: NSView, context: Context) {}
 }
 
 /// Строка-ссылка внизу панели — как «Настройки звука…» в системной.

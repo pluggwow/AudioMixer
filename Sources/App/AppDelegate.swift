@@ -10,6 +10,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         Task { @MainActor in
             AppContainer.shared.start()
+            // Значок в менюбаре ставится после старта контейнера: он
+            // подписывается на громкость, которой до старта ещё нет.
+            MixerPanelController.shared.install()
         }
     }
 

@@ -105,7 +105,16 @@ final class MixerViewModel: ObservableObject {
 
         deviceManager.$availableDevices
             .receive(on: DispatchQueue.main)
-            .assign(to: &$availableDevices)
+            .sink { [weak self] devices in
+                guard let self else { return }
+                self.availableDevices = devices
+                // Движку нужен не только выбор пользователя, но и то, какие
+                // устройства вообще существуют: отключение наушников не меняет
+                // устройство по умолчанию, если система и так играла в динамики,
+                // и без этого приложение осталось бы с маршрутом в никуда.
+                self.tapEngine?.setAvailableDevices(uids: Set(devices.map(\.uid)))
+            }
+            .store(in: &cancellables)
 
         deviceManager.start()
         processMonitor.start()

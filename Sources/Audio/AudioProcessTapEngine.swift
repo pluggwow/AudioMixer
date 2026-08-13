@@ -115,6 +115,17 @@ final class AudioProcessTapEngine {
     private var tapFailures: Set<pid_t> = []
 
     private var outputDeviceUID: String?
+
+    /// UID устройств, которые существуют прямо сейчас.
+    ///
+    /// Пустое множество означает «список ещё не приходил», а не «устройств
+    /// нет»: пока он не пришёл, никого никуда не переселяем.
+    private var liveDeviceUIDs: Set<String> = []
+
+    /// Уровни в том виде, в каком их прислал UI, — с выбором пользователя.
+    /// Подмена пропавшего устройства делается при применении и сюда не
+    /// записывается: иначе выбор терялся бы навсегда, а он должен вернуться,
+    /// когда устройство подключат обратно.
     private var lastLevels: [Level] = []
     private var pendingWorkItem: DispatchWorkItem?
 
@@ -143,6 +154,20 @@ final class AudioProcessTapEngine {
             guard let self, self.outputDeviceUID != uid else { return }
             AppLog.engine.info("Default output changed to \(uid ?? "nil", privacy: .public)")
             self.outputDeviceUID = uid
+            self.applyUnsafe(levels: self.lastLevels)
+        }
+    }
+
+    /// Сообщить, какие устройства сейчас существуют.
+    ///
+    /// Нужно отдельно от `setOutputDevice`: устройство по умолчанию меняется не
+    /// всегда. Если система играла в динамики, а приложение было уведено в
+    /// наушники, то отключение наушников умолчание не трогает — и без этого
+    /// вызова движок так и остался бы с маршрутом на исчезнувшее устройство.
+    func setAvailableDevices(uids: Set<String>) {
+        queue.async { [weak self] in
+            guard let self, self.liveDeviceUIDs != uids else { return }
+            self.liveDeviceUIDs = uids
             self.applyUnsafe(levels: self.lastLevels)
         }
     }
@@ -185,6 +210,30 @@ final class AudioProcessTapEngine {
         }
     }
 
+    /// Заменить выбор пользователя на умолчание там, где выбранного устройства
+    /// больше нет.
+    ///
+    /// Наушники отключили, а приложение всё ещё смотрит на их UID. Агрегат на
+    /// несуществующем субустройстве не собирается, но тапп к этому моменту уже
+    /// создан — а тапп глушит приложение в источнике. В итоге приложение молчит
+    /// вообще: ни в наушниках, которых нет, ни в динамиках.
+    ///
+    /// Сам выбор не стирается, он лежит в `lastLevels` и в настройках. Поэтому
+    /// когда устройство подключат обратно, приложение вернётся на него само.
+    private func liveLevelsUnsafe(_ levels: [Level]) -> [Level] {
+        guard !liveDeviceUIDs.isEmpty else { return levels }
+
+        return levels.map { level in
+            guard let uid = level.outputUID, !liveDeviceUIDs.contains(uid) else { return level }
+            AppLog.engine.info(
+                "Устройство \(uid, privacy: .public) пропало, pid \(level.pid) — на умолчание"
+            )
+            var moved = level
+            moved.outputUID = nil
+            return moved
+        }
+    }
+
     /// Кому нужен тапп прямо сейчас.
     ///
     /// Кроме тех, кому он нужен по сути, сюда попадают те, у кого он УЖЕ есть
@@ -204,7 +253,10 @@ final class AudioProcessTapEngine {
     /// пользователя, результат которого он ждёт сейчас, а не через 150 мс.
     private func needsImmediateApplyUnsafe(levels: [Level]) -> Bool {
         let defaultUID = outputDeviceUID
-        let required = requiredLevelsUnsafe(levels)
+        // Те же приведённые уровни, что и в applyUnsafe: иначе приложение с
+        // пропавшим устройством считалось бы «переехавшим» на каждом движении
+        // слайдера и каждый раз тянуло бы за собой полную пересборку.
+        let required = requiredLevelsUnsafe(liveLevelsUnsafe(levels))
 
         if required.contains(where: { taps[$0.pid] == nil && !tapFailures.contains($0.pid) }) {
             return true
@@ -246,7 +298,9 @@ final class AudioProcessTapEngine {
     }
 
     private func applyUnsafe(levels: [Level]) {
+        // Запоминаем сырые уровни, работаем с приведёнными: см. liveLevelsUnsafe.
         lastLevels = levels
+        let levels = liveLevelsUnsafe(levels)
 
         let defaultUID = outputDeviceUID
         let required = requiredLevelsUnsafe(levels)

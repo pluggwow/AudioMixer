@@ -42,6 +42,9 @@ targets:
         PRODUCT_NAME: AudioMixer
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Resources/Info.plist
+        # Из C приходит только атомарное чтение и запись Float для
+        # realtime-потока, см. Sources/Utilities/AudioMixerAtomics.h.
+        SWIFT_OBJC_BRIDGING_HEADER: Sources/AudioMixer-Bridging-Header.h
         SWIFT_EMIT_LOC_STRINGS: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # Раньше team ID жил только в сгенерированном pbxproj, и каждый

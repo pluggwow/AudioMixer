@@ -26,8 +26,14 @@ final class RenderState {
     /// Потолок каналов входа. 32 таппа по стерео = 64. С запасом.
     static let maxChannels = 128
 
-    /// Целевые гейны: куда громкость должна прийти. Пишет UI под локом.
-    private let gains: UnsafeMutablePointer<Float>
+    /// Целевые гейны: куда громкость должна прийти.
+    ///
+    /// Хранятся образами Float в uint32: пишет их очередь движка, читает
+    /// аудиопоток, и общего лока между ними нет — он на realtime-потоке
+    /// запрещён. Обычное присваивание в такой паре было бы гонкой по правилам
+    /// языка, поэтому доступ идёт через relaxed-атомарные операции. На arm64
+    /// и x86_64 это те же инструкции, что и присваивание.
+    private let gains: UnsafeMutablePointer<UInt32>
 
     /// Достигнутые гейны: откуда начинается разгон в следующем буфере.
     ///
@@ -40,13 +46,14 @@ final class RenderState {
     private let lock: UnsafeMutablePointer<os_unfair_lock>
     private var activeChannels: Int = 0
 
-    /// Мастер-гейн применяется поверх пер-аппового. Меняется атомарно отдельно от лока,
-    /// чтобы движение мастер-слайдера не спорило за лок с пересборкой tap-list.
-    private let masterGain: UnsafeMutablePointer<Float>
+    /// Мастер-гейн применяется поверх пер-аппового. Живёт отдельно от лока,
+    /// чтобы движение мастер-слайдера не спорило за него с пересборкой
+    /// tap-list. Хранение и доступ — как у `gains`.
+    private let masterGain: UnsafeMutablePointer<UInt32>
 
     init() {
         gains = .allocate(capacity: Self.maxChannels)
-        gains.initialize(repeating: 0, count: Self.maxChannels)
+        gains.initialize(repeating: 0, count: Self.maxChannels)   // образ 0.0
 
         // С нуля: первый буфер после включения движка нарастает от тишины,
         // а не начинается со скачка.
@@ -54,7 +61,8 @@ final class RenderState {
         currentGains.initialize(repeating: 0, count: Self.maxChannels)
 
         masterGain = .allocate(capacity: 1)
-        masterGain.initialize(to: 1.0)
+        masterGain.initialize(to: 0)
+        AudioMixerStoreFloatRelaxed(masterGain, 1)
 
         lock = .allocate(capacity: 1)
         lock.initialize(to: os_unfair_lock())
@@ -82,9 +90,8 @@ final class RenderState {
     /// Движение слайдера меняет одни значения, и брать под них лок нельзя:
     /// realtime-поток заходит через `trylock` и на неудачу отдаёт буфер
     /// тишины. При шестидесяти обновлениях в секунду это давало слышимые
-    /// провалы — «звук прерывается на миллисекунду». Отдельное выровненное
-    /// 32-битное сохранение атомарно (на этом же держится `setMasterGain`),
-    /// так что порвать значение посередине нечем; худшее, что может
+    /// провалы — «звук прерывается на миллисекунду». Значения пишутся
+    /// атомарно, поэтому порвать их посередине нечем; худшее, что может
     /// случиться, — один буфер со смесью старых и новых гейнов, а его
     /// сгладит интерполяция.
     func updateChannelGains(_ newGains: [Float]) {
@@ -92,17 +99,17 @@ final class RenderState {
 
         if count == writerChannelCount {
             for index in 0..<count {
-                gains[index] = newGains[index]
+                AudioMixerStoreFloatRelaxed(gains + index, newGains[index])
             }
             return
         }
 
         os_unfair_lock_lock(lock)
         for index in 0..<count {
-            gains[index] = newGains[index]
+            AudioMixerStoreFloatRelaxed(gains + index, newGains[index])
         }
         for index in count..<Self.maxChannels {
-            gains[index] = 0
+            AudioMixerStoreFloatRelaxed(gains + index, 0)
         }
         activeChannels = count
         os_unfair_lock_unlock(lock)
@@ -110,10 +117,9 @@ final class RenderState {
         writerChannelCount = count
     }
 
-    /// Одиночное 32-битное выровненное сохранение — на arm64/x86_64 атомарно,
-    /// рвать значение посередине нечем. Лок здесь не нужен и вреден.
+    /// Одиночное атомарное сохранение. Лок здесь не нужен и вреден.
     func setMasterGain(_ value: Float) {
-        masterGain.pointee = max(0, min(value, 1))
+        AudioMixerStoreFloatRelaxed(masterGain, max(0, min(value, 1)))
     }
 
     // MARK: - Чтение (realtime сторона)
@@ -154,7 +160,7 @@ final class RenderState {
         // ступенькой ровно в тот момент, когда пользователь уводит системную
         // громкость в ноль. Теперь ноль — такая же цель разгона, как любая
         // другая, а когда все каналы до неё доехали, цикл и так пропускает их.
-        let master = masterGain.pointee
+        let master = AudioMixerLoadFloatRelaxed(masterGain)
 
         let inputBuffers = UnsafeMutableAudioBufferListPointer(
             UnsafeMutablePointer(mutating: input)
@@ -185,7 +191,7 @@ final class RenderState {
                 guard globalChannel < activeChannels else { break }
 
                 let from = currentGains[globalChannel]
-                let to = gains[globalChannel] * master
+                let to = AudioMixerLoadFloatRelaxed(gains + globalChannel) * master
 
                 // Канал молчал и молчит — складывать нечего.
                 if from <= 0 && to <= 0 { continue }

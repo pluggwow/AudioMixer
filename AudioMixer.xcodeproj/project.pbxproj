@@ -54,6 +54,7 @@
 		2DB3549DA254361FFB5004D1 /* NonKeyPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NonKeyPanel.swift; sourceTree = "<group>"; };
 		308E8BD77A229B614B6F4696 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		3CD6A2586AC5BBC885207676 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
+		4763789DF1B7FE6DED3D4AC8 /* AudioMixerAtomics.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AudioMixerAtomics.h; sourceTree = "<group>"; };
 		495408255CA07555F2541C41 /* AppIconProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconProvider.swift; sourceTree = "<group>"; };
 		49C5B53B91BD4BBEC37598FF /* ServiceManagement.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ServiceManagement.framework; path = System/Library/Frameworks/ServiceManagement.framework; sourceTree = SDKROOT; };
 		5710AAA229FD7118940672E4 /* CoreAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudio.framework; path = System/Library/Frameworks/CoreAudio.framework; sourceTree = SDKROOT; };
@@ -77,6 +78,7 @@
 		DD1D0B4A9A402B2079829388 /* AudioProcessTapEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioProcessTapEngine.swift; sourceTree = "<group>"; };
 		E4BD3ACA6E5B5C15E922F992 /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
 		E4FF5D87A9AD38E2429BD82A /* AudioProcessMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioProcessMonitor.swift; sourceTree = "<group>"; };
+		E716B8D69F8A25C96158B07D /* AudioMixer-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "AudioMixer-Bridging-Header.h"; sourceTree = "<group>"; };
 		F57BE6D30AC2AA5FA1152467 /* MasterVolumeSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MasterVolumeSection.swift; sourceTree = "<group>"; };
 		F9AF2FFC5F2F96149C50A371 /* MixerPanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MixerPanelController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -108,6 +110,7 @@
 		176A379C14D43719C3FBAF09 /* Sources */ = {
 			isa = PBXGroup;
 			children = (
+				E716B8D69F8A25C96158B07D /* AudioMixer-Bridging-Header.h */,
 				F1205EB581B5B0B184A73BCD /* App */,
 				AF3C28C16C08EFBD44186E51 /* Audio */,
 				0B637479DAC7525000D4CD30 /* Models */,
@@ -123,6 +126,7 @@
 		182BBB7054D21EBAC6A25974 /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
+				4763789DF1B7FE6DED3D4AC8 /* AudioMixerAtomics.h */,
 				2DB3549DA254361FFB5004D1 /* NonKeyPanel.swift */,
 			);
 			path = Utilities;
@@ -360,6 +364,7 @@
 				PRODUCT_NAME = AudioMixer;
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "Sources/AudioMixer-Bridging-Header.h";
 			};
 			name = Debug;
 		};
@@ -510,6 +515,7 @@
 				PRODUCT_NAME = AudioMixer;
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "Sources/AudioMixer-Bridging-Header.h";
 			};
 			name = Release;
 		};

@@ -121,10 +121,15 @@ struct EqualizerView: View {
         }
     }
 
+    /// Целое — без дробной части, половина — с ней. Округлять всё до целого
+    /// нельзя: у пресетов есть полки в 4,5 дБ, и подпись «+4» на них врёт.
     private func gainText(_ index: Int) -> String {
         let value = settings.gainsDB[index]
         if abs(value) < 0.05 { return "0" }
-        return String(format: "%+.0f", value)
+        let rounded = (value * 2).rounded() / 2
+        return rounded == rounded.rounded()
+            ? String(format: "%+.0f", rounded)
+            : String(format: "%+.1f", rounded)
     }
 
     /// 16000 → «16к»: под ползунком шириной в три десятка точек полное число

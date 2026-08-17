@@ -217,19 +217,44 @@ struct AppearanceSettingsView: View {
 struct ApplicationsSettingsView: View {
     @EnvironmentObject private var viewModel: MixerViewModel
 
+    /// Только те, у кого что-то отличается от настроек по умолчанию.
+    /// Остальные записи ничего не хранят, и показывать их незачем.
     private var entries: [(bundleID: String, settings: StoredAppSettings)] {
         viewModel.volumeStore.storage
+            .filter(\.value.isCustomized)
             .map { ($0.key, $0.value) }
             .sorted { $0.1.lastSeen > $1.1.lastSeen }
+    }
+
+    /// Сколько записей скрыто. Пишем это прямо в подвале: иначе непонятно, что
+    /// именно уберёт «Очистить всё».
+    private var hiddenCount: Int {
+        viewModel.volumeStore.storage.count - entries.count
+    }
+
+    /// Что именно настроено — одной строкой. Раньше здесь была только
+    /// громкость, и приложение с одним лишь своим источником выглядело так же,
+    /// как нетронутое.
+    private func summary(_ settings: StoredAppSettings) -> String {
+        var parts: [String] = []
+        if settings.volume != 1.0 || settings.isMuted {
+            parts.append("громкость \(Int(settings.volume * 100))%")
+        }
+        if settings.isMuted { parts.append("заглушено") }
+        if settings.isPinned { parts.append("закреплено") }
+        if settings.outputDeviceUID != nil { parts.append("свой источник") }
+        if settings.equalizer.isEnabled { parts.append("эквалайзер") }
+        if !settings.rememberVolume { parts.append("не запоминать") }
+        return parts.isEmpty ? "без изменений" : parts.joined(separator: " · ")
     }
 
     var body: some View {
         VStack(spacing: 0) {
             if entries.isEmpty {
                 ContentUnavailableView(
-                    "Нет сохранённых приложений",
+                    "Ничего не настроено",
                     systemImage: "square.grid.2x2",
-                    description: Text("Измените громкость любого приложения — оно появится здесь")
+                    description: Text("Измените громкость, источник или эквалайзер любого приложения — оно появится здесь")
                 )
             } else {
                 List {
@@ -238,7 +263,7 @@ struct ApplicationsSettingsView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(entry.settings.displayName.isEmpty ? entry.bundleID : entry.settings.displayName)
                                     .font(.system(size: 12, weight: .medium))
-                                Text("Громкость: \(Int(entry.settings.volume * 100))%" + (entry.settings.isMuted ? " · заглушено" : ""))
+                                Text(summary(entry.settings))
                                     .font(.system(size: 10))
                                     .foregroundStyle(.secondary)
                             }
@@ -265,6 +290,11 @@ struct ApplicationsSettingsView: View {
                 }
 
                 HStack {
+                    if hiddenCount > 0 {
+                        Text("Скрыто без изменений: \(hiddenCount)")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.tertiary)
+                    }
                     Spacer()
                     Button("Очистить всё", role: .destructive) {
                         viewModel.volumeStore.forgetAll()

@@ -51,6 +51,44 @@ final class RenderState {
     /// tap-list. Хранение и доступ — как у `gains`.
     private let masterGain: UnsafeMutablePointer<UInt32>
 
+    // MARK: - Эквалайзер
+
+    /// Потолок каналов, к которым применяется эквалайзер.
+    static let maxEQChannels = 8
+
+    /// Полосы в децибелах и выключатель — так же атомарно, как гейны.
+    ///
+    /// Готовые коэффициенты через поток не передаются намеренно. Их набор надо
+    /// отдавать целиком: половина старых с половиной новых — это уже другой
+    /// фильтр, возможно неустойчивый, то есть громкий треск. Передавать целиком
+    /// значит либо лок на RT-потоке, либо двойная буферизация с версиями.
+    /// Полосы же независимы: смешались старая с новой — просто один буфер с
+    /// чуть другой кривой. Поэтому через поток идут полосы, а коэффициенты
+    /// считает сам аудиопоток, и только когда полосы поменялись.
+    private let bandGains: UnsafeMutablePointer<UInt32>
+    private let eqEnabled: UnsafeMutablePointer<UInt32>
+
+    /// Настройка фильтра. Создаётся не-realtime стороной под локом: создание
+    /// выделяет память, на RT-потоке это запрещено.
+    private var eqSetup: vDSP_biquadm_Setup?
+    private var eqChannels = 0
+    private var eqSampleRate: Double = 0
+
+    /// Буфер коэффициентов и массивы указателей для vDSP. Выделены заранее,
+    /// в рендере только заполняются.
+    private let coefficients: UnsafeMutablePointer<Double>
+    private let eqInputs: UnsafeMutablePointer<UnsafePointer<Float>?>
+    private let eqOutputs: UnsafeMutablePointer<UnsafeMutablePointer<Float>?>
+
+    /// Полосы, которые уже стоят в фильтре, и признак «фильтр сейчас считается».
+    /// Принадлежат исключительно аудиопотоку.
+    private let appliedBands: UnsafeMutablePointer<Float>
+    private var eqRunning = false
+
+    private static var coefficientCapacity: Int {
+        EqualizerSettings.bandCount * maxEQChannels * BiquadCoefficients.perSection
+    }
+
     init() {
         gains = .allocate(capacity: Self.maxChannels)
         gains.initialize(repeating: 0, count: Self.maxChannels)   // образ 0.0
@@ -66,6 +104,22 @@ final class RenderState {
 
         lock = .allocate(capacity: 1)
         lock.initialize(to: os_unfair_lock())
+
+        let bands = EqualizerSettings.bandCount
+        bandGains = .allocate(capacity: bands)
+        bandGains.initialize(repeating: 0, count: bands)   // образ 0.0 дБ
+        eqEnabled = .allocate(capacity: 1)
+        eqEnabled.initialize(to: 0)
+
+        coefficients = .allocate(capacity: Self.coefficientCapacity)
+        coefficients.initialize(repeating: 0, count: Self.coefficientCapacity)
+        appliedBands = .allocate(capacity: bands)
+        appliedBands.initialize(repeating: 0, count: bands)
+
+        eqInputs = .allocate(capacity: Self.maxEQChannels)
+        eqInputs.initialize(repeating: nil, count: Self.maxEQChannels)
+        eqOutputs = .allocate(capacity: Self.maxEQChannels)
+        eqOutputs.initialize(repeating: nil, count: Self.maxEQChannels)
     }
 
     deinit {
@@ -77,6 +131,15 @@ final class RenderState {
         masterGain.deallocate()
         lock.deinitialize(count: 1)
         lock.deallocate()
+
+        if let eqSetup { vDSP_biquadm_DestroySetup(eqSetup) }
+        let bands = EqualizerSettings.bandCount
+        bandGains.deinitialize(count: bands); bandGains.deallocate()
+        eqEnabled.deinitialize(count: 1); eqEnabled.deallocate()
+        coefficients.deinitialize(count: Self.coefficientCapacity); coefficients.deallocate()
+        appliedBands.deinitialize(count: bands); appliedBands.deallocate()
+        eqInputs.deinitialize(count: Self.maxEQChannels); eqInputs.deallocate()
+        eqOutputs.deinitialize(count: Self.maxEQChannels); eqOutputs.deallocate()
     }
 
     // MARK: - Запись (не-realtime сторона)
@@ -115,6 +178,52 @@ final class RenderState {
         os_unfair_lock_unlock(lock)
 
         writerChannelCount = count
+    }
+
+    /// Задать полосы эквалайзера. Лока не требует — см. `bandGains`.
+    func updateEqualizer(_ settings: EqualizerSettings) {
+        let normalized = settings.normalized()
+        for index in 0..<EqualizerSettings.bandCount {
+            AudioMixerStoreFloatRelaxed(bandGains + index, Float(normalized.gainsDB[index]))
+        }
+        AudioMixerStoreFloatRelaxed(eqEnabled, normalized.isActive ? 1 : 0)
+    }
+
+    /// Подготовить фильтр под формат маршрута.
+    ///
+    /// Только с очереди движка: создание настройки выделяет память. Лок здесь
+    /// нужен, потому что указатель на настройку читает аудиопоток; он заходит
+    /// через `trylock`, так что худшее — один буфер тишины в момент пересборки
+    /// маршрута, где разрыв и так есть.
+    func prepareEqualizer(channels: Int, sampleRate: Double) {
+        let channels = Swift.max(1, Swift.min(channels, Self.maxEQChannels))
+        guard sampleRate > 0 else { return }
+
+        os_unfair_lock_lock(lock)
+        defer { os_unfair_lock_unlock(lock) }
+
+        guard channels != eqChannels || sampleRate != eqSampleRate || eqSetup == nil else { return }
+
+        if let old = eqSetup { vDSP_biquadm_DestroySetup(old) }
+        eqSetup = nil
+
+        // Стартуем с прозрачного фильтра: реальные полосы аудиопоток подставит
+        // сам, целями с плавным переходом, — и включение обойдётся без щелчка.
+        let sections = EqualizerSettings.bandCount
+        let count = sections * channels * BiquadCoefficients.perSection
+        for index in 0..<count {
+            coefficients[index] = (index % BiquadCoefficients.perSection == 0) ? 1 : 0
+        }
+
+        eqSetup = vDSP_biquadm_CreateSetup(coefficients,
+                                           vDSP_Length(sections),
+                                           vDSP_Length(channels))
+        eqChannels = eqSetup == nil ? 0 : channels
+        eqSampleRate = sampleRate
+
+        // Полосы придётся поставить заново: настройка новая.
+        for index in 0..<sections { appliedBands[index] = 0 }
+        eqRunning = false
     }
 
     /// Одиночное атомарное сохранение. Лок здесь не нужен и вреден.
@@ -227,6 +336,8 @@ final class RenderState {
             channelCursor += inChannels
         }
 
+        applyEqualizerUnsafe(outData: outData, frames: outFrames, outChannels: outChannels)
+
         // Мягкое ограничение. Сумма нескольких приложений на 100% может выйти за [-1, 1];
         // hard clip дал бы слышимые щелчки, tanh-подобная кривая — нет.
         var index = 0
@@ -240,5 +351,74 @@ final class RenderState {
             }
             index += 1
         }
+    }
+
+    /// Фильтр поверх сведённого буфера.
+    ///
+    /// В маршруте ровно один тапп, то есть весь выходной буфер — это звук
+    /// одного приложения. Поэтому эквалайзер применяется прямо к нему, а не
+    /// к отдельным входным каналам: считать надо один раз, а не по разу на
+    /// канал таппа.
+    ///
+    /// Вызывается из `render` под уже взятым локом.
+    private func applyEqualizerUnsafe(outData: UnsafeMutablePointer<Float>,
+                                      frames: Int,
+                                      outChannels: Int) {
+
+        guard AudioMixerLoadFloatRelaxed(eqEnabled) > 0.5,
+              let setup = eqSetup,
+              eqChannels > 0,
+              // Настройка сделана под определённое число каналов, и vDSP ждёт
+              // ровно столько указателей. Если устройство отдаёт меньше —
+              // пропускаем: лучше без эквалайзера, чем мимо буфера.
+              outChannels >= eqChannels
+        else {
+            eqRunning = false
+            return
+        }
+
+        // Полосы поменялись — пересчитываем коэффициенты и отдаём их целями.
+        // vDSP доводит фильтр до них плавно, поэтому крутить полосы можно на
+        // ходу без щелчков.
+        var changed = !eqRunning
+        for index in 0..<EqualizerSettings.bandCount {
+            let value = AudioMixerLoadFloatRelaxed(bandGains + index)
+            if value != appliedBands[index] {
+                appliedBands[index] = value
+                changed = true
+            }
+        }
+
+        if changed {
+            BiquadCoefficients.fill(coefficients,
+                                    gainsDB: appliedBands,
+                                    frequencies: EqualizerSettings.frequencies,
+                                    q: EqualizerSettings.q,
+                                    channels: eqChannels,
+                                    sampleRate: eqSampleRate)
+            vDSP_biquadm_SetTargetsDouble(setup, coefficients, 0.995, 0.05, 0, 0,
+                                          vDSP_Length(EqualizerSettings.bandCount),
+                                          vDSP_Length(eqChannels))
+            eqRunning = true
+        }
+
+        for channel in 0..<eqChannels {
+            eqInputs[channel] = UnsafePointer(outData + channel)
+            eqOutputs[channel] = outData + channel
+        }
+
+        // Optional-указатель лежит в памяти так же, как обычный, поэтому
+        // массивы переиспользуются без копирования.
+        let inputs = UnsafeMutableRawPointer(eqInputs)
+            .assumingMemoryBound(to: UnsafePointer<Float>.self)
+        let outputs = UnsafeMutableRawPointer(eqOutputs)
+            .assumingMemoryBound(to: UnsafeMutablePointer<Float>.self)
+
+        // Считаем прямо в выходном буфере: проверено, результат совпадает с
+        // раздельным. Шаг равен числу каналов — буфер чередующийся.
+        vDSP_biquadm(setup,
+                     inputs, vDSP_Stride(outChannels),
+                     outputs, vDSP_Stride(outChannels),
+                     vDSP_Length(frames))
     }
 }

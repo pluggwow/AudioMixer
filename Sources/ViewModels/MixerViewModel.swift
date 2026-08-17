@@ -255,6 +255,27 @@ final class MixerViewModel: ObservableObject {
         pushLevelsToEngine()
     }
 
+    // MARK: - Эквалайзер
+
+    /// Задать полосы приложению.
+    ///
+    /// Как и своё устройство, эквалайзер требует перехвата: он работает только
+    /// через наш рендер. Поэтому приложение с поднятой полосой таппится даже
+    /// на полной громкости — движок это учитывает сам.
+    func setEqualizer(_ settings: EqualizerSettings, for bundleID: String) {
+        guard let index = apps.firstIndex(where: { $0.bundleID == bundleID }) else { return }
+        let normalized = settings.normalized()
+        guard apps[index].equalizer != normalized else { return }
+
+        apps[index].equalizer = normalized
+        volumeStore.setEqualizer(normalized, for: bundleID, displayName: apps[index].name)
+        pushLevelsToEngine()
+    }
+
+    func equalizer(for bundleID: String) -> EqualizerSettings {
+        apps.first { $0.bundleID == bundleID }?.equalizer ?? .off
+    }
+
     /// Устройство приложения как объект — для галочки в меню и значка в строке.
     func outputDevice(for app: AudioAppState) -> AudioDeviceInfo? {
         guard let uid = app.outputDeviceUID else { return nil }
@@ -399,7 +420,8 @@ final class MixerViewModel: ObservableObject {
                     isPlaying: process.isRunningOutput,
                     isPinned: volumeStore.settings(for: process.bundleID)?.isPinned ?? false,
                     isRunning: true,
-                    outputDeviceUID: volumeStore.settings(for: process.bundleID)?.outputDeviceUID
+                    outputDeviceUID: volumeStore.settings(for: process.bundleID)?.outputDeviceUID,
+                    equalizer: volumeStore.settings(for: process.bundleID)?.equalizer ?? .off
                 )
             )
         }
@@ -434,7 +456,8 @@ final class MixerViewModel: ObservableObject {
                     isPlaying: false,
                     isPinned: true,
                     isRunning: false,
-                    outputDeviceUID: entry.settings.outputDeviceUID
+                    outputDeviceUID: entry.settings.outputDeviceUID,
+                    equalizer: entry.settings.equalizer
                 )
             }
             // Порядок словаря не определён, а список не должен прыгать между
@@ -461,7 +484,8 @@ final class MixerViewModel: ObservableObject {
                 volume: $0.volume,
                 isMuted: $0.isMuted,
                 outputUID: $0.outputDeviceUID,
-                isPlaying: $0.isPlaying
+                isPlaying: $0.isPlaying,
+                equalizer: $0.equalizer
             )
         }
         engine.apply(levels: levels)

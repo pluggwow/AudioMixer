@@ -30,6 +30,7 @@ struct AppListView: View {
     let onToggleMute: (String) -> Void
     let onTogglePin: (String) -> Void
     let onSelectOutput: (String, String?) -> Void
+    let onOpenEqualizer: (String) -> Void
     let onMove: (Int, Int) -> Void
     let onDragBegan: () -> Void
     let onDragEnded: () -> Void
@@ -83,7 +84,8 @@ struct AppListView: View {
             onVolumeChange: { onVolumeChange(app.bundleID, $0) },
             onToggleMute: { onToggleMute(app.bundleID) },
             onTogglePin: { onTogglePin(app.bundleID) },
-            onSelectOutput: { uid in onSelectOutput(app.bundleID, uid) }
+            onSelectOutput: { uid in onSelectOutput(app.bundleID, uid) },
+            onOpenEqualizer: { onOpenEqualizer(app.bundleID) }
         )
         .background(
             GeometryReader { proxy in

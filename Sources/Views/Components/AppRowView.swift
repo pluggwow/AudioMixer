@@ -26,6 +26,7 @@ struct AppRowView: View {
     var onTogglePin: () -> Void = {}
     /// nil — вернуть приложение на системное устройство.
     var onSelectOutput: (String?) -> Void = { _ in }
+    var onOpenEqualizer: () -> Void = {}
 
     @State private var isHovering = false
     @State private var isNameHovering = false
@@ -164,6 +165,14 @@ struct AppRowView: View {
                 )
             }
             .disabled(availableDevices.isEmpty)
+
+            Divider()
+
+            // Точка после названия — по правилу macOS: пункт открывает окно,
+            // а не выполняет действие сразу.
+            Button(app.equalizer.isActive ? "Эквалайзер… ✓" : "Эквалайзер…") {
+                onOpenEqualizer()
+            }
         }
     }
 

@@ -27,6 +27,7 @@ struct MixerRootView: View {
     /// Окно настроек — отдельное, но привязанное к панели: открывается слева
     /// от неё и не забирает фокус, поэтому панель остаётся на экране.
     @ObservedObject private var settingsPanel = SettingsPanelController.shared
+    @ObservedObject private var equalizerPanel = EqualizerPanelController.shared
 
     var body: some View {
         mixer
@@ -192,6 +193,12 @@ struct MixerRootView: View {
                             onTogglePin: { viewModel.togglePin(for: $0) },
                             onSelectOutput: { bundleID, uid in
                                 viewModel.setOutputDevice(uid, for: bundleID)
+                            },
+                            onOpenEqualizer: { bundleID in
+                                // По той же схеме, что и настройки: своё окно
+                                // слева от панели, фокус у панели не забирает.
+                                equalizerPanel.toggle(for: bundleID,
+                                                      nextTo: MixerPanelController.shared.window)
                             },
                             onMove: { source, destination in
                                 viewModel.moveApp(from: source, to: destination)

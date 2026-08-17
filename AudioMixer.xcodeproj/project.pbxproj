@@ -21,6 +21,7 @@
 		2E662479A9CBEB8261CF9B64 /* SettingsPanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95E34E59470729C017347F08 /* SettingsPanelController.swift */; };
 		2E8BD1A95E24226BD222274E /* MixerRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE98D57250B9E7793A273CF /* MixerRootView.swift */; };
 		409A8872F7B15ABB6E753993 /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD6A2586AC5BBC885207676 /* SettingsStore.swift */; };
+		41A1B0F5086E15EED75FC0DF /* BiquadCoefficients.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3AB749A66B7643C3F8FF9F0 /* BiquadCoefficients.swift */; };
 		480424A64578FE1195B33D23 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9EC2C8B211716EB7F481EA /* SettingsView.swift */; };
 		4ED3D2AEB934D10059BC4093 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5710AAA229FD7118940672E4 /* CoreAudio.framework */; };
 		4FBC84B9EEF8BE704113C173 /* AudioDeviceInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = B713626901BEB65900D028B3 /* AudioDeviceInfo.swift */; };
@@ -28,9 +29,12 @@
 		59C88A1C9EAF12B0E0C1874E /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6BDCBB55536E40288A8FFCC5 /* AudioToolbox.framework */; };
 		5E13B4FB61A982F208580064 /* AppIconProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 495408255CA07555F2541C41 /* AppIconProvider.swift */; };
 		61FE21BB0A2C0356685113C8 /* AudioProcessTapEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD1D0B4A9A402B2079829388 /* AudioProcessTapEngine.swift */; };
+		66D21508F3E1C509546DA4A8 /* EqualizerSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2174138313E4F444FB114AB0 /* EqualizerSettings.swift */; };
 		68E8C8D0F58E12146BECCE8A /* MasterVolumeSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = F57BE6D30AC2AA5FA1152467 /* MasterVolumeSection.swift */; };
 		83BC8843F8FEBC351E35928D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 308E8BD77A229B614B6F4696 /* AppDelegate.swift */; };
 		85AA62D1CDD15540CE5B1625 /* ServiceManagement.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 49C5B53B91BD4BBEC37598FF /* ServiceManagement.framework */; };
+		8AB3DF4113CD2EEEEE79F8BD /* EqualizerPanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1B6FCF78A3E7D6E42874776 /* EqualizerPanelController.swift */; };
+		8AD17C8806746686AF91C460 /* EqualizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A4804E0D088C417BE6BFB7F /* EqualizerView.swift */; };
 		A9293257856FCAC965594D2C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 24316766AB950FACA2E58186 /* Assets.xcassets */; };
 		BAE08FD32469E87C8234D87F /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC96038FFDF693487FAB7CE7 /* AppContainer.swift */; };
 		C3CCAB6F9FB9DD285ED2E590 /* PermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04B79B2F51B2AC2319692757 /* PermissionManager.swift */; };
@@ -49,6 +53,7 @@
 		0FDFD0758F5713FE7D579E4B /* VolumeSlider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeSlider.swift; sourceTree = "<group>"; };
 		183D42D1B9FA2E8C6B211111 /* AudioDeviceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDeviceManager.swift; sourceTree = "<group>"; };
 		1BE98D57250B9E7793A273CF /* MixerRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MixerRootView.swift; sourceTree = "<group>"; };
+		2174138313E4F444FB114AB0 /* EqualizerSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EqualizerSettings.swift; sourceTree = "<group>"; };
 		24316766AB950FACA2E58186 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2A469DA70067B7D58F6496EF /* AppListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppListView.swift; sourceTree = "<group>"; };
 		2DB3549DA254361FFB5004D1 /* NonKeyPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NonKeyPanel.swift; sourceTree = "<group>"; };
@@ -66,6 +71,7 @@
 		7DD9661B0033328DA6478A32 /* SystemVolumeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemVolumeController.swift; sourceTree = "<group>"; };
 		848D6F996EBFD12A0EEF138C /* VolumeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeStore.swift; sourceTree = "<group>"; };
 		8499D6C3B66B4AA798D2AFB8 /* LoginItemService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginItemService.swift; sourceTree = "<group>"; };
+		8A4804E0D088C417BE6BFB7F /* EqualizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EqualizerView.swift; sourceTree = "<group>"; };
 		8B66965A7354412E4D8FA69C /* OutputDeviceMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputDeviceMenu.swift; sourceTree = "<group>"; };
 		95E34E59470729C017347F08 /* SettingsPanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPanelController.swift; sourceTree = "<group>"; };
 		A66C67512A32AB272CAA5857 /* AppRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRowView.swift; sourceTree = "<group>"; };
@@ -73,9 +79,11 @@
 		B713626901BEB65900D028B3 /* AudioDeviceInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDeviceInfo.swift; sourceTree = "<group>"; };
 		BF8395A6CFA1A3E3DA9E8B51 /* AudioAppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioAppState.swift; sourceTree = "<group>"; };
 		C047CF76CFDC440706C2CD3E /* RenderState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderState.swift; sourceTree = "<group>"; };
+		C1B6FCF78A3E7D6E42874776 /* EqualizerPanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EqualizerPanelController.swift; sourceTree = "<group>"; };
 		D06139F4C4128007CF28B762 /* AudioMixer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AudioMixer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DC96038FFDF693487FAB7CE7 /* AppContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppContainer.swift; sourceTree = "<group>"; };
 		DD1D0B4A9A402B2079829388 /* AudioProcessTapEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioProcessTapEngine.swift; sourceTree = "<group>"; };
+		E3AB749A66B7643C3F8FF9F0 /* BiquadCoefficients.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiquadCoefficients.swift; sourceTree = "<group>"; };
 		E4BD3ACA6E5B5C15E922F992 /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
 		E4FF5D87A9AD38E2429BD82A /* AudioProcessMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioProcessMonitor.swift; sourceTree = "<group>"; };
 		E716B8D69F8A25C96158B07D /* AudioMixer-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "AudioMixer-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -103,6 +111,7 @@
 			children = (
 				BF8395A6CFA1A3E3DA9E8B51 /* AudioAppState.swift */,
 				B713626901BEB65900D028B3 /* AudioDeviceInfo.swift */,
+				2174138313E4F444FB114AB0 /* EqualizerSettings.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -113,6 +122,7 @@
 				E716B8D69F8A25C96158B07D /* AudioMixer-Bridging-Header.h */,
 				F1205EB581B5B0B184A73BCD /* App */,
 				AF3C28C16C08EFBD44186E51 /* Audio */,
+				58F61211492058039101C1B7 /* Equalizer */,
 				0B637479DAC7525000D4CD30 /* Models */,
 				850F5241E791DFC1521BF874 /* Services */,
 				19A855B03BB0425EB3C3BBB2 /* Settings */,
@@ -155,6 +165,15 @@
 				24316766AB950FACA2E58186 /* Assets.xcassets */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		58F61211492058039101C1B7 /* Equalizer */ = {
+			isa = PBXGroup;
+			children = (
+				C1B6FCF78A3E7D6E42874776 /* EqualizerPanelController.swift */,
+				8A4804E0D088C417BE6BFB7F /* EqualizerView.swift */,
+			);
+			path = Equalizer;
 			sourceTree = "<group>";
 		};
 		664070A4E23668732962AEB4 /* Views */ = {
@@ -213,6 +232,7 @@
 				183D42D1B9FA2E8C6B211111 /* AudioDeviceManager.swift */,
 				E4FF5D87A9AD38E2429BD82A /* AudioProcessMonitor.swift */,
 				DD1D0B4A9A402B2079829388 /* AudioProcessTapEngine.swift */,
+				E3AB749A66B7643C3F8FF9F0 /* BiquadCoefficients.swift */,
 				59B6AA82DD56A91CD812DA5E /* CoreAudioUtilities.swift */,
 				04B79B2F51B2AC2319692757 /* PermissionManager.swift */,
 				C047CF76CFDC440706C2CD3E /* RenderState.swift */,
@@ -325,7 +345,11 @@
 				C88AC38B120737C8C09B46D8 /* AudioMixerApp.swift in Sources */,
 				143A5A009FE00DF9F36C9196 /* AudioProcessMonitor.swift in Sources */,
 				61FE21BB0A2C0356685113C8 /* AudioProcessTapEngine.swift in Sources */,
+				41A1B0F5086E15EED75FC0DF /* BiquadCoefficients.swift in Sources */,
 				0938A3315D24DC53BB545585 /* CoreAudioUtilities.swift in Sources */,
+				8AB3DF4113CD2EEEEE79F8BD /* EqualizerPanelController.swift in Sources */,
+				66D21508F3E1C509546DA4A8 /* EqualizerSettings.swift in Sources */,
+				8AD17C8806746686AF91C460 /* EqualizerView.swift in Sources */,
 				1A462AFF3D68FC722B0B3DE8 /* LoginItemService.swift in Sources */,
 				68E8C8D0F58E12146BECCE8A /* MasterVolumeSection.swift in Sources */,
 				04F3BF7CF1FFEEB52FC39CD6 /* MixerPanelController.swift in Sources */,

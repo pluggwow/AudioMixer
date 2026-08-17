@@ -25,6 +25,7 @@ struct AudioAppState: Identifiable, Equatable {
     var isRunning: Bool = true
     /// Своё устройство вывода. `nil` — звучит туда же, куда и система.
     var outputDeviceUID: String? = nil
+    var equalizer: EqualizerSettings = .off
 
     var id: String { bundleID }
 
@@ -83,6 +84,8 @@ struct StoredAppSettings: Codable, Equatable {
     /// либо не закреплено, либо пользователь сам передвинул строку после
     /// закрепления, и его выбор важнее прежнего места.
     var anchorBeforePin: PinAnchor?
+    /// Полосы эквалайзера этого приложения.
+    var equalizer: EqualizerSettings = .off
 
     init(volume: Float = 1.0,
          isMuted: Bool = false,
@@ -91,7 +94,8 @@ struct StoredAppSettings: Codable, Equatable {
          lastSeen: Date = .now,
          isPinned: Bool = false,
          anchorBeforePin: PinAnchor? = nil,
-         outputDeviceUID: String? = nil) {
+         outputDeviceUID: String? = nil,
+         equalizer: EqualizerSettings = .off) {
         self.volume = volume
         self.isMuted = isMuted
         self.rememberVolume = rememberVolume
@@ -100,6 +104,7 @@ struct StoredAppSettings: Codable, Equatable {
         self.isPinned = isPinned
         self.anchorBeforePin = anchorBeforePin
         self.outputDeviceUID = outputDeviceUID
+        self.equalizer = equalizer
     }
 
     /// Декодер написан руками из-за одной особенности Swift: синтезированный
@@ -119,5 +124,7 @@ struct StoredAppSettings: Codable, Equatable {
         isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
         anchorBeforePin = try container.decodeIfPresent(PinAnchor.self, forKey: .anchorBeforePin)
         outputDeviceUID = try container.decodeIfPresent(String.self, forKey: .outputDeviceUID)
+        // Через decodeIfPresent — по той же причине, что и всё выше.
+        equalizer = try container.decodeIfPresent(EqualizerSettings.self, forKey: .equalizer) ?? .off
     }
 }

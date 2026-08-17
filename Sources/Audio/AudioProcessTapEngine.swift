@@ -57,6 +57,7 @@ final class AudioProcessTapEngine {
         var outputUID: String?
         /// Приложение прямо сейчас выводит звук.
         var isPlaying: Bool = false
+        var equalizer: EqualizerSettings = .off
 
         var effectiveGain: Float { isMuted ? 0 : max(0, min(volume, 1)) }
 
@@ -68,6 +69,10 @@ final class AudioProcessTapEngine {
         /// Перехват нужен либо чтобы менять громкость, либо чтобы увести звук
         /// на другое устройство.
         func requiresTap(default defaultOutput: String?) -> Bool {
+            // Эквалайзер работает только через наш рендер, а рендер — только
+            // через тапп. Поэтому включённый эквалайзер держит тапп даже на
+            // полной громкости и на системном устройстве.
+            if equalizer.isActive { return true }
             if isMuted || volume < 0.999 { return true }
             guard let outputUID else { return false }
             return outputUID != defaultOutput
@@ -79,7 +84,9 @@ final class AudioProcessTapEngine {
         let tapID: AudioObjectID
         let uid: String
         let channelCount: Int
+        let sampleRate: Double
         var gain: Float
+        var equalizer: EqualizerSettings = .off
     }
 
     /// Маршрут одного приложения: его тапп, свой агрегат и свой IOProc.
@@ -287,13 +294,28 @@ final class AudioProcessTapEngine {
 
     // MARK: - Реализация (всегда на self.queue)
 
+    /// Быстрый путь: громкость и полосы эквалайзера. Агрегат не трогает.
+    ///
+    /// Полосы идут здесь же не случайно. Крутить их пользователь будет так же,
+    /// как слайдер громкости, — непрерывно, десятками движений в секунду. Если
+    /// бы каждое движение шло полным путём, оно пересобирало бы агрегат, и
+    /// звук рвался бы на каждом.
     private func updateGainsOnlyUnsafe(levels: [Level]) {
         for level in levels {
-            guard var slot = taps[level.pid], slot.gain != level.effectiveGain else { continue }
+            guard var slot = taps[level.pid] else { continue }
+
+            let gainChanged = slot.gain != level.effectiveGain
+            let eqChanged = slot.equalizer != level.equalizer
+            guard gainChanged || eqChanged else { continue }
+
             slot.gain = level.effectiveGain
+            slot.equalizer = level.equalizer
             taps[level.pid] = slot
+
             // Только своему маршруту: чужие про эту громкость ничего не знают.
-            if let route = routes[level.pid] { pushGainMapUnsafe(route) }
+            guard let route = routes[level.pid] else { continue }
+            if gainChanged { pushGainMapUnsafe(route) }
+            if eqChanged { route.renderState.updateEqualizer(level.equalizer) }
         }
     }
 
@@ -390,23 +412,28 @@ final class AudioProcessTapEngine {
         try caCheck(AudioHardwareCreateProcessTap(description, &tapID), "AudioHardwareCreateProcessTap")
         guard tapID.isValid else { throw CAError.objectNotFound("process tap for pid \(level.pid)") }
 
-        let channels = (try? tapChannelCount(tapID)) ?? 2
+        let format = (try? tapFormat(tapID)) ?? (channels: 2, sampleRate: 48000)
 
-        AppLog.engine.info("Created tap \(tapID) for pid \(level.pid), \(channels) ch")
+        AppLog.engine.info(
+            "Created tap \(tapID) for pid \(level.pid), \(format.channels) ch @ \(format.sampleRate) Hz"
+        )
 
         return TapSlot(
             pid: level.pid,
             tapID: tapID,
             uid: description.uuid.uuidString,
-            channelCount: channels,
+            channelCount: format.channels,
+            sampleRate: format.sampleRate,
             gain: level.effectiveGain
         )
     }
 
-    private func tapChannelCount(_ tapID: AudioObjectID) throws -> Int {
+    /// Формат таппа: и каналы, и частота дискретизации. Частота нужна
+    /// эквалайзеру — без неё полосы окажутся не на тех частотах.
+    private func tapFormat(_ tapID: AudioObjectID) throws -> (channels: Int, sampleRate: Double) {
         var asbd = AudioStreamBasicDescription()
         asbd = try tapID.read(AudioProperty(kAudioTapPropertyFormat), defaultValue: asbd)
-        return Int(asbd.mChannelsPerFrame)
+        return (Int(asbd.mChannelsPerFrame), asbd.mSampleRate)
     }
 
     /// pid -> AudioObjectID процесса в Core Audio.
@@ -477,6 +504,12 @@ final class AudioProcessTapEngine {
 
         bindDeviceVolumeUnsafe(route)
         pushGainMapUnsafe(route)
+        // Фильтр готовится здесь, а не в рендере: создание настройки выделяет
+        // память. Формат берём у таппа — он сводит звук в стерео, и частота
+        // дискретизации у него та же, в которой считает агрегат.
+        route.renderState.prepareEqualizer(channels: slot.channelCount,
+                                           sampleRate: slot.sampleRate)
+        route.renderState.updateEqualizer(slot.equalizer)
         try startIfNeededUnsafe(route)
     }
 

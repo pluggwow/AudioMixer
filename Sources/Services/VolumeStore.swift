@@ -84,6 +84,17 @@ final class VolumeStore: ObservableObject {
         scheduleSave()
     }
 
+    /// Полосы эквалайзера. Как закрепление и устройство, не зависит от
+    /// «запоминать громкости»: это настройка звучания, а не громкость.
+    func setEqualizer(_ settings: EqualizerSettings, for bundleID: String, displayName: String) {
+        var entry = storage[bundleID] ?? StoredAppSettings()
+        entry.equalizer = settings.normalized()
+        entry.displayName = displayName.isEmpty ? entry.displayName : displayName
+        entry.lastSeen = .now
+        storage[bundleID] = entry
+        scheduleSave()
+    }
+
     /// Пользователь передвинул строку сам — прежнее место больше не актуально,
     /// открепление не должно отменять его выбор.
     func clearPinAnchor(for bundleID: String) {

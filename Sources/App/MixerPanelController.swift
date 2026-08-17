@@ -208,13 +208,16 @@ final class MixerPanelController: NSObject, ObservableObject {
         monitors.removeAll()
     }
 
-    /// Клики по самой панели, по значку в менюбаре и по окну настроек панель
-    /// не закрывают — иначе настройки было бы не потрогать.
+    /// Клики по самой панели, по значку в менюбаре и по окнам-спутникам панель
+    /// не закрывают — иначе ни настройки, ни эквалайзер было бы не потрогать:
+    /// они открыты рядом, но окна отдельные, и без этой проверки первый же
+    /// клик по ним закрывает панель, а вместе с ней и их самих.
     private func isOurWindow(_ candidate: NSWindow?) -> Bool {
         guard let candidate else { return false }
         if candidate === window { return true }
         if candidate === statusItem?.button?.window { return true }
         if candidate === SettingsPanelController.shared.window { return true }
+        if candidate === EqualizerPanelController.shared.window { return true }
         return false
     }
 }

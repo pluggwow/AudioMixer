@@ -12,9 +12,9 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .system: return "Системная"
-        case .light:  return "Светлая"
-        case .dark:   return "Тёмная"
+        case .system: return String(localized: "Системная")
+        case .light:  return String(localized: "Светлая")
+        case .dark:   return String(localized: "Тёмная")
         }
     }
 
@@ -41,7 +41,9 @@ enum PanelMaterial: String, CaseIterable, Identifiable {
     case translucent, solid
     var id: String { rawValue }
 
-    var title: String { self == .translucent ? "Прозрачное" : "Однотонное" }
+    var title: String {
+        self == .translucent ? String(localized: "Прозрачное") : String(localized: "Однотонное")
+    }
 
     var shapeStyle: AnyShapeStyle {
         switch self {
@@ -67,9 +69,9 @@ enum RowDensity: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .compact: return "Компактная"
-        case .normal:  return "Обычная"
-        case .large:   return "Крупная"
+        case .compact: return String(localized: "Компактная")
+        case .normal:  return String(localized: "Обычная")
+        case .large:   return String(localized: "Крупная")
         }
     }
 
@@ -90,9 +92,9 @@ enum PanelWidthOption: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .narrow: return "Узкая"
-        case .normal: return "Обычная"
-        case .wide:   return "Широкая"
+        case .narrow: return String(localized: "Узкая")
+        case .normal: return String(localized: "Обычная")
+        case .wide:   return String(localized: "Широкая")
         }
     }
 
@@ -134,7 +136,9 @@ enum VisibleRowsOption: String, CaseIterable, Identifiable {
 enum SliderStyleOption: String, CaseIterable, Identifiable {
     case capsule, thin
     var id: String { rawValue }
-    var title: String { self == .capsule ? "Объёмный" : "Тонкий" }
+    var title: String {
+        self == .capsule ? String(localized: "Объёмный") : String(localized: "Тонкий")
+    }
 }
 
 @MainActor

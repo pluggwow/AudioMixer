@@ -6,6 +6,10 @@
 name: AudioMixer
 options:
   bundleIdPrefix: com.example
+  # Язык разработки — русский: ключи строк это сами русские фразы.
+  # Английский лежит переводом в каталогах Resources/*.xcstrings, и macOS
+  # выбирает его сама по языку системы.
+  developmentLanguage: ru
   deploymentTarget:
     macOS: "14.4"
   createIntermediateGroups: true
@@ -31,6 +35,10 @@ targets:
       # чтобы все десять размеров выходили из одного источника, а не из
       # ручного масштабирования картинки.
       - path: Resources/Assets.xcassets
+      # Каталоги строк. Localizable — интерфейс, InfoPlist — текст системного
+      # диалога запроса доступа к звуку: его иностранец видит первым.
+      - path: Resources/Localizable.xcstrings
+      - path: Resources/InfoPlist.xcstrings
     # Блока info: здесь намеренно нет. Он не «указывает на файл», а ГЕНЕРИРУЕТ
     # его — то есть каждый `xcodegen generate` затирал наш Resources/Info.plist
     # вместе с NSAudioCaptureUsageDescription, без которого система убивает

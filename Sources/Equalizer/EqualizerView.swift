@@ -136,7 +136,7 @@ struct EqualizerView: View {
     /// не помещается, а порядок величины и так понятен.
     private func label(for freq: Double) -> String {
         freq >= 1000
-            ? "\(Int(freq / 1000))к"
+            ? String(format: String(localized: "%lldк"), Int(freq / 1000))
             : "\(Int(freq))"
     }
 
@@ -166,8 +166,8 @@ struct EqualizerView: View {
     /// Узнать это из поведения нельзя, поэтому написано здесь.
     private var hint: String {
         settings.isActive
-            ? "Пока эквалайзер работает, звук приложения идёт через AudioMixer"
-            : "Полосы применяются к звуку только этого приложения"
+            ? String(localized: "Пока эквалайзер работает, звук приложения идёт через AudioMixer")
+            : String(localized: "Полосы применяются к звуку только этого приложения")
     }
 
     private func update(_ change: @escaping (inout EqualizerSettings, Bool) -> Void)

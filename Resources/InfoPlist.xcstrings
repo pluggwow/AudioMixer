@@ -1,0 +1,24 @@
+{
+  "sourceLanguage": "ru",
+  "version": "1.0",
+  "strings": {
+    "NSAudioCaptureUsageDescription": {
+      "comment": "Текст в системном диалоге запроса доступа к звуку",
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AudioMixer перехватывает звук приложений, чтобы регулировать их громкость по отдельности."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AudioMixer taps app audio so you can set the volume of each app separately."
+          }
+        }
+      }
+    }
+  }
+}

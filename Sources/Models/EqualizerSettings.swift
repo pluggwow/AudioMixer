@@ -91,12 +91,12 @@ enum EqualizerPreset: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .flat:   return "Плоский"
-        case .bass:   return "Бас"
-        case .vocal:  return "Голос"
-        case .treble: return "Высокие"
-        case .laptop: return "Ноутбук"
-        case .night:  return "Ночь"
+        case .flat:   return String(localized: "Плоский")
+        case .bass:   return String(localized: "Бас")
+        case .vocal:  return String(localized: "Голос")
+        case .treble: return String(localized: "Высокие")
+        case .laptop: return String(localized: "Ноутбук")
+        case .night:  return String(localized: "Ночь")
         }
     }
 

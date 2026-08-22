@@ -11,6 +11,7 @@
 		06E1B62D97CA1A6CD3725CCD /* AudioAppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF8395A6CFA1A3E3DA9E8B51 /* AudioAppState.swift */; };
 		07252783E028BCF01CC6961D /* SystemVolumeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DD9661B0033328DA6478A32 /* SystemVolumeController.swift */; };
 		0938A3315D24DC53BB545585 /* CoreAudioUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59B6AA82DD56A91CD812DA5E /* CoreAudioUtilities.swift */; };
+		0DD3C9D9AFAF67C9551B40E9 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A623B3966DAAF7129665ACDE /* Localizable.xcstrings */; };
 		143A5A009FE00DF9F36C9196 /* AudioProcessMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4FF5D87A9AD38E2429BD82A /* AudioProcessMonitor.swift */; };
 		14E6CF6FDE2097AF623B1E52 /* OutputDeviceMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B66965A7354412E4D8FA69C /* OutputDeviceMenu.swift */; };
 		17CA0DF29CCE65EC4317B1C5 /* RenderState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C047CF76CFDC440706C2CD3E /* RenderState.swift */; };
@@ -23,6 +24,7 @@
 		409A8872F7B15ABB6E753993 /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD6A2586AC5BBC885207676 /* SettingsStore.swift */; };
 		41A1B0F5086E15EED75FC0DF /* BiquadCoefficients.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3AB749A66B7643C3F8FF9F0 /* BiquadCoefficients.swift */; };
 		480424A64578FE1195B33D23 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9EC2C8B211716EB7F481EA /* SettingsView.swift */; };
+		4E207E380FA8D6130075A2C3 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 160B06C95B8D890998423C2E /* InfoPlist.xcstrings */; };
 		4ED3D2AEB934D10059BC4093 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5710AAA229FD7118940672E4 /* CoreAudio.framework */; };
 		4FBC84B9EEF8BE704113C173 /* AudioDeviceInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = B713626901BEB65900D028B3 /* AudioDeviceInfo.swift */; };
 		537AD556AB642AF8B0FD0321 /* MixerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A72566E1E32B29F3496BDEA0 /* MixerViewModel.swift */; };
@@ -51,6 +53,7 @@
 		04B79B2F51B2AC2319692757 /* PermissionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionManager.swift; sourceTree = "<group>"; };
 		08396B1F3C32248EB1D1C4DA /* StatusBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBanner.swift; sourceTree = "<group>"; };
 		0FDFD0758F5713FE7D579E4B /* VolumeSlider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeSlider.swift; sourceTree = "<group>"; };
+		160B06C95B8D890998423C2E /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		183D42D1B9FA2E8C6B211111 /* AudioDeviceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDeviceManager.swift; sourceTree = "<group>"; };
 		1BE98D57250B9E7793A273CF /* MixerRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MixerRootView.swift; sourceTree = "<group>"; };
 		2174138313E4F444FB114AB0 /* EqualizerSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EqualizerSettings.swift; sourceTree = "<group>"; };
@@ -74,6 +77,7 @@
 		8A4804E0D088C417BE6BFB7F /* EqualizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EqualizerView.swift; sourceTree = "<group>"; };
 		8B66965A7354412E4D8FA69C /* OutputDeviceMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputDeviceMenu.swift; sourceTree = "<group>"; };
 		95E34E59470729C017347F08 /* SettingsPanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPanelController.swift; sourceTree = "<group>"; };
+		A623B3966DAAF7129665ACDE /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		A66C67512A32AB272CAA5857 /* AppRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRowView.swift; sourceTree = "<group>"; };
 		A72566E1E32B29F3496BDEA0 /* MixerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MixerViewModel.swift; sourceTree = "<group>"; };
 		B713626901BEB65900D028B3 /* AudioDeviceInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDeviceInfo.swift; sourceTree = "<group>"; };
@@ -163,6 +167,8 @@
 			isa = PBXGroup;
 			children = (
 				24316766AB950FACA2E58186 /* Assets.xcassets */,
+				160B06C95B8D890998423C2E /* InfoPlist.xcstrings */,
+				A623B3966DAAF7129665ACDE /* Localizable.xcstrings */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -299,11 +305,11 @@
 				};
 			};
 			buildConfigurationList = C7B2513C2A179529ECA7852D /* Build configuration list for PBXProject "AudioMixer" */;
-			developmentRegion = en;
+			developmentRegion = ru;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				Base,
-				en,
+				ru,
 			);
 			mainGroup = 6D2AAF30EC60768B92DD258C;
 			minimizedProjectReferenceProxies = 1;
@@ -323,6 +329,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				A9293257856FCAC965594D2C /* Assets.xcassets in Resources */,
+				4E207E380FA8D6130075A2C3 /* InfoPlist.xcstrings in Resources */,
+				0DD3C9D9AFAF67C9551B40E9 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

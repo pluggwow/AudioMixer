@@ -231,7 +231,7 @@ struct MixerRootView: View {
 
     private var footer: some View {
         HStack(spacing: 4) {
-            FooterButton(title: "Настройки", isActive: settingsPanel.isVisible) {
+            FooterButton(title: String(localized: "Настройки"), isActive: settingsPanel.isVisible) {
                 // Ключевое окно в этот момент — сама панель микшера: по ней
                 // и позиционируем настройки.
                 // Раньше здесь стоял NSApp.keyWindow. Панель теперь своё окно,

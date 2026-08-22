@@ -43,7 +43,7 @@ struct MasterVolumeSection: View {
                     // тут же, в сеттере привязки.
                     isEnabled: systemVolume.isControllable,
                     hoverLabel: systemVolume.isMuted
-                        ? "Выкл."
+                        ? String(localized: "Выкл.")
                         : "\(Int((systemVolume.volume * 100).rounded()))%"
                 )
 
@@ -66,7 +66,8 @@ struct MasterVolumeSection: View {
                         .frame(width: 20, height: 20)
                         .contentShape(Rectangle())
                 }
-                .help(device.map { "Выход: \($0.name)" } ?? "Устройство вывода")
+                .help(device.map { String(format: String(localized: "Выход: %@"), $0.name) }
+                        ?? String(localized: "Устройство вывода"))
             }
 
             if !systemVolume.isControllable {

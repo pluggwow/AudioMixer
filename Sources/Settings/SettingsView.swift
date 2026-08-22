@@ -21,10 +21,10 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .general:    return "Основные"
-        case .audio:      return "Звук"
-        case .appearance: return "Оформление"
-        case .apps:       return "Приложения"
+        case .general:    return String(localized: "Основные")
+        case .audio:      return String(localized: "Звук")
+        case .appearance: return String(localized: "Оформление")
+        case .apps:       return String(localized: "Приложения")
         }
     }
 
@@ -238,14 +238,14 @@ struct ApplicationsSettingsView: View {
     private func summary(_ settings: StoredAppSettings) -> String {
         var parts: [String] = []
         if settings.volume != 1.0 || settings.isMuted {
-            parts.append("громкость \(Int(settings.volume * 100))%")
+            parts.append(String(format: String(localized: "громкость %lld%%"), Int(settings.volume * 100)))
         }
-        if settings.isMuted { parts.append("заглушено") }
-        if settings.isPinned { parts.append("закреплено") }
-        if settings.outputDeviceUID != nil { parts.append("свой источник") }
-        if settings.equalizer.isEnabled { parts.append("эквалайзер") }
-        if !settings.rememberVolume { parts.append("не запоминать") }
-        return parts.isEmpty ? "без изменений" : parts.joined(separator: " · ")
+        if settings.isMuted { parts.append(String(localized: "заглушено")) }
+        if settings.isPinned { parts.append(String(localized: "закреплено")) }
+        if settings.outputDeviceUID != nil { parts.append(String(localized: "свой источник")) }
+        if settings.equalizer.isEnabled { parts.append(String(localized: "эквалайзер")) }
+        if !settings.rememberVolume { parts.append(String(localized: "не запоминать")) }
+        return parts.isEmpty ? String(localized: "без изменений") : parts.joined(separator: " · ")
     }
 
     var body: some View {

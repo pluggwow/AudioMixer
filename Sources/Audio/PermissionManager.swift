@@ -35,7 +35,7 @@ final class PermissionManager: ObservableObject {
 
     func check() {
         guard #available(macOS 14.4, *) else {
-            status = .unsupported("Требуется macOS 14.4 или новее")
+            status = .unsupported(String(localized: "Требуется macOS 14.4 или новее"))
             return
         }
 

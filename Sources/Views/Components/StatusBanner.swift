@@ -55,16 +55,16 @@ struct PermissionBanner: View {
     }
 
     private var title: String {
-        if case .unsupported = status { return "Система не поддерживается" }
-        return "Нужен доступ к звуку"
+        if case .unsupported = status { return String(localized: "Система не поддерживается") }
+        return String(localized: "Нужен доступ к звуку")
     }
 
     private var message: String {
         switch status {
         case .unsupported(let reason):
-            return reason + ". Управление громкостью отдельных приложений использует Core Audio Process Tap, доступный только начиная с этой версии."
+            return reason + String(localized: ". Управление громкостью отдельных приложений использует Core Audio Process Tap, доступный только начиная с этой версии.")
         default:
-            return "Чтобы регулировать громкость отдельных приложений, macOS должна разрешить AudioMixer захват аудио. Без этого разрешения работает только общая громкость."
+            return String(localized: "Чтобы регулировать громкость отдельных приложений, macOS должна разрешить AudioMixer захват аудио. Без этого разрешения работает только общая громкость.")
         }
     }
 }

@@ -99,7 +99,9 @@ struct AppRowView: View {
                 // фильтр насыщенности до заливки слайдера доходит не всегда,
                 // и цветная полоска выбивалась из приглушённой строки.
                 accentTint: (app.isSilent || !app.isRunning) ? .secondary : nil,
-                hoverLabel: showPercentage ? (app.isMuted ? "Выкл." : app.percentText) : nil
+                hoverLabel: showPercentage
+                    ? (app.isMuted ? String(localized: "Выкл.") : app.percentText)
+                    : nil
             )
             .frame(width: metrics.sliderWidth)
 
@@ -160,7 +162,7 @@ struct AppRowView: View {
                 OutputDevicePicker(
                     selectedUID: app.outputDeviceUID,
                     availableDevices: availableDevices,
-                    systemDefaultTitle: "Как в системе",
+                    systemDefaultTitle: String(localized: "Как в системе"),
                     onSelect: onSelectOutput
                 )
             }
@@ -184,7 +186,7 @@ struct AppRowView: View {
         OutputDeviceMenu(
             selectedUID: app.outputDeviceUID,
             availableDevices: availableDevices,
-            systemDefaultTitle: "Как в системе",
+            systemDefaultTitle: String(localized: "Как в системе"),
             onSelect: onSelectOutput,
             fixedSize: true
         ) {
@@ -196,7 +198,8 @@ struct AppRowView: View {
                 .frame(width: outputSize, height: outputSize)
                 .contentShape(Rectangle())
         }
-        .help(routedDevice.map { "Выход: \($0.name)" } ?? "Выбрать устройство вывода")
+        .help(routedDevice.map { String(format: String(localized: "Выход: %@"), $0.name) }
+            ?? String(localized: "Выбрать устройство вывода"))
     }
 
     private var backgroundOpacity: Double {

@@ -102,7 +102,8 @@ final class EqualizerPanelController: NSObject, ObservableObject {
     private func title(for bundleID: String) -> String {
         let name = AppContainer.shared.mixerViewModel.apps
             .first { $0.bundleID == bundleID }?.name
-        return name.map { "Эквалайзер — \($0)" } ?? "Эквалайзер"
+        return name.map { String(format: String(localized: "Эквалайзер — %@"), $0) }
+            ?? String(localized: "Эквалайзер")
     }
 
     private func content(for bundleID: String) -> AnyView {

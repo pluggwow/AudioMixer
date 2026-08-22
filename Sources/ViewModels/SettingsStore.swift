@@ -133,6 +133,33 @@ enum VisibleRowsOption: String, CaseIterable, Identifiable {
     }
 }
 
+/// Язык интерфейса.
+///
+/// Своих строк у этого перечисления почти нет: названия языков пишутся на них
+/// самих — так делает и система, и человек, ищущий свой язык в списке, найдёт
+/// его, даже если сейчас включён чужой.
+enum AppLanguage: String, CaseIterable, Identifiable {
+    case system, ru, en
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .system: return String(localized: "Системный")
+        case .ru:     return "Русский"
+        case .en:     return "English"
+        }
+    }
+
+    /// Что положить в AppleLanguages. `nil` — убрать ключ и вернуться к системе.
+    var languageCodes: [String]? {
+        switch self {
+        case .system: return nil
+        case .ru:     return ["ru"]
+        case .en:     return ["en"]
+        }
+    }
+}
+
 enum SliderStyleOption: String, CaseIterable, Identifiable {
     case capsule, thin
     var id: String { rawValue }
@@ -161,6 +188,7 @@ final class SettingsStore: ObservableObject {
     @AppStorage("showOutputButton") var showOutputButton: Bool = true
     @AppStorage("sliderStyle") var sliderStyleRaw: String = SliderStyleOption.capsule.rawValue
     @AppStorage("launchAtLogin") var launchAtLoginPreference: Bool = false
+    @AppStorage("appLanguage") var appLanguageRaw: String = AppLanguage.system.rawValue
 
     var appearanceMode: AppearanceMode {
         get { AppearanceMode(rawValue: appearanceModeRaw) ?? .system }
@@ -194,6 +222,11 @@ final class SettingsStore: ObservableObject {
                    showsOutputButton: showOutputButton)
     }
 
+    var appLanguage: AppLanguage {
+        get { AppLanguage(rawValue: appLanguageRaw) ?? .system }
+        set { appLanguageRaw = newValue.rawValue }
+    }
+
     var sliderStyle: SliderStyleOption {
         get { SliderStyleOption(rawValue: sliderStyleRaw) ?? .capsule }
         set { sliderStyleRaw = newValue.rawValue }
@@ -208,6 +241,50 @@ final class SettingsStore: ObservableObject {
     /// заодно рамку окна настроек, до которой SwiftUI-схема не достаёт.
     func applyAppearance() {
         NSApp.appearance = appearanceMode.nsAppearance
+    }
+
+    /// Сменить язык интерфейса.
+    ///
+    /// На лету это не делается: macOS выбирает локализацию один раз, при
+    /// запуске, и уже загруженные строки заново не перечитываются. Живая смена
+    /// потребовала бы гонять каждую строку через свой Bundle, то есть переписать
+    /// все места разом — ради настройки, которую трогают один раз в жизни.
+    /// Поэтому пишем AppleLanguages и перезапускаемся.
+    func setLanguage(_ language: AppLanguage) {
+        guard language != appLanguage else { return }
+        appLanguage = language
+
+        let defaults = UserDefaults.standard
+        if let codes = language.languageCodes {
+            defaults.set(codes, forKey: "AppleLanguages")
+        } else {
+            // Ключа нет — язык берётся системный.
+            defaults.removeObject(forKey: "AppleLanguages")
+        }
+        defaults.synchronize()
+
+        relaunch()
+    }
+
+    /// Перезапуск: сначала ставим отложенный запуск, потом выходим.
+    ///
+    /// Порядок именно такой. Запустить копию до выхода нельзя: два экземпляра
+    /// одновременно полезут в Core Audio за таппами одних и тех же процессов.
+    /// Оболочка переживает наш выход — её подхватывает launchd.
+    ///
+    /// Два правила, купленные опытом: teardown руками отсюда не звать — его
+    /// сделает applicationWillTerminate, а второй вызов подряд вешал выход
+    /// намертво; и `terminate` не звать прямо из обработчика пикера — вызов
+    /// приходится на обновление вида SwiftUI и просто теряется. Обе ошибки
+    /// выглядели одинаково: новый экземпляр поднимался, старый оставался жить.
+    private func relaunch() {
+        let path = Bundle.main.bundlePath
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/sh")
+        task.arguments = ["-c", "sleep 1; open -n \"$0\"", path]
+        try? task.run()
+
+        DispatchQueue.main.async { NSApp.terminate(nil) }
     }
 
     func applyActivationPolicy() {

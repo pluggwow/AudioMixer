@@ -55,6 +55,23 @@ struct GeneralSettingsView: View {
                 ))
                 Toggle("Показывать иконку в Dock", isOn: $settings.showDockIcon)
             }
+
+            Section {
+                Picker("Язык", selection: Binding(
+                    get: { settings.appLanguage },
+                    set: { settings.setLanguage($0) }
+                )) {
+                    ForEach(AppLanguage.allCases) { language in
+                        Text(language.title).tag(language)
+                    }
+                }
+            } footer: {
+                // Предупреждение обязано быть: панель и это окно закроются, и
+                // без объяснения это выглядит как падение.
+                Text("Приложение перезапустится, чтобы применить язык")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
         .onAppear { settings.syncLoginItem() }

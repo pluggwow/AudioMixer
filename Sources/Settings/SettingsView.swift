@@ -72,6 +72,19 @@ struct GeneralSettingsView: View {
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
             }
+
+            // Версию больше узнать неоткуда: своего меню у приложения нет.
+            // Первый же вопрос при жалобе — какая версия стоит.
+            Section {
+                HStack {
+                    Text("Версия")
+                    Spacer()
+                    Text(AppInfo.versionWithBuild)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .textSelection(.enabled)
+                }
+            }
         }
         .formStyle(.grouped)
         .onAppear { settings.syncLoginItem() }

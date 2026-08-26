@@ -1046,6 +1046,17 @@
           }
         }
       }
+    },
+    "Версия": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version"
+          }
+        }
+      }
     }
   }
 }

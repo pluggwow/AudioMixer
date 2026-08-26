@@ -27,6 +27,7 @@
 		4E207E380FA8D6130075A2C3 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 160B06C95B8D890998423C2E /* InfoPlist.xcstrings */; };
 		4ED3D2AEB934D10059BC4093 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5710AAA229FD7118940672E4 /* CoreAudio.framework */; };
 		4FBC84B9EEF8BE704113C173 /* AudioDeviceInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = B713626901BEB65900D028B3 /* AudioDeviceInfo.swift */; };
+		5059D246F444B89899E21955 /* AppInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CAF58BB50F6DB65689ACDEC /* AppInfo.swift */; };
 		537AD556AB642AF8B0FD0321 /* MixerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A72566E1E32B29F3496BDEA0 /* MixerViewModel.swift */; };
 		59C88A1C9EAF12B0E0C1874E /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6BDCBB55536E40288A8FFCC5 /* AudioToolbox.framework */; };
 		5E13B4FB61A982F208580064 /* AppIconProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 495408255CA07555F2541C41 /* AppIconProvider.swift */; };
@@ -52,6 +53,7 @@
 /* Begin PBXFileReference section */
 		04B79B2F51B2AC2319692757 /* PermissionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionManager.swift; sourceTree = "<group>"; };
 		08396B1F3C32248EB1D1C4DA /* StatusBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBanner.swift; sourceTree = "<group>"; };
+		0CAF58BB50F6DB65689ACDEC /* AppInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppInfo.swift; sourceTree = "<group>"; };
 		0FDFD0758F5713FE7D579E4B /* VolumeSlider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeSlider.swift; sourceTree = "<group>"; };
 		160B06C95B8D890998423C2E /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		183D42D1B9FA2E8C6B211111 /* AudioDeviceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDeviceManager.swift; sourceTree = "<group>"; };
@@ -140,6 +142,7 @@
 		182BBB7054D21EBAC6A25974 /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
+				0CAF58BB50F6DB65689ACDEC /* AppInfo.swift */,
 				4763789DF1B7FE6DED3D4AC8 /* AudioMixerAtomics.h */,
 				2DB3549DA254361FFB5004D1 /* NonKeyPanel.swift */,
 			);
@@ -344,6 +347,7 @@
 				BAE08FD32469E87C8234D87F /* AppContainer.swift in Sources */,
 				83BC8843F8FEBC351E35928D /* AppDelegate.swift in Sources */,
 				5E13B4FB61A982F208580064 /* AppIconProvider.swift in Sources */,
+				5059D246F444B89899E21955 /* AppInfo.swift in Sources */,
 				28DEC9A752A64EB2437305DB /* AppListView.swift in Sources */,
 				DFC85A460EAB861F36752BDC /* AppOrderStore.swift in Sources */,
 				FECF4138552B48AFA107F161 /* AppRowView.swift in Sources */,

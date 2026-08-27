@@ -17,6 +17,7 @@ final class AppContainer: ObservableObject {
     let volumeStore: VolumeStore
     let orderStore: AppOrderStore
     let mixerViewModel: MixerViewModel
+    let updateChecker = UpdateChecker()
 
     private init() {
         let settings = SettingsStore()
@@ -38,6 +39,12 @@ final class AppContainer: ObservableObject {
         settings.applyAppearance()
         settings.syncLoginItem()
         mixerViewModel.start()
+
+        // Не чаще раза в сутки и только если разрешено. Проверка не должна
+        // задерживать запуск, поэтому отдельной задачей.
+        if settings.checkUpdatesAutomatically {
+            Task { await updateChecker.check(force: false) }
+        }
     }
 
     func shutdown() {

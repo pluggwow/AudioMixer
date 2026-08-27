@@ -12,6 +12,7 @@
 		07252783E028BCF01CC6961D /* SystemVolumeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DD9661B0033328DA6478A32 /* SystemVolumeController.swift */; };
 		0938A3315D24DC53BB545585 /* CoreAudioUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59B6AA82DD56A91CD812DA5E /* CoreAudioUtilities.swift */; };
 		0DD3C9D9AFAF67C9551B40E9 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A623B3966DAAF7129665ACDE /* Localizable.xcstrings */; };
+		139BBBA8BEFB08699100BE8A /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DB2A118198824FCE12369A0 /* UpdateChecker.swift */; };
 		143A5A009FE00DF9F36C9196 /* AudioProcessMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4FF5D87A9AD38E2429BD82A /* AudioProcessMonitor.swift */; };
 		14E6CF6FDE2097AF623B1E52 /* OutputDeviceMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B66965A7354412E4D8FA69C /* OutputDeviceMenu.swift */; };
 		17CA0DF29CCE65EC4317B1C5 /* RenderState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C047CF76CFDC440706C2CD3E /* RenderState.swift */; };
@@ -61,6 +62,7 @@
 		2174138313E4F444FB114AB0 /* EqualizerSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EqualizerSettings.swift; sourceTree = "<group>"; };
 		24316766AB950FACA2E58186 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2A469DA70067B7D58F6496EF /* AppListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppListView.swift; sourceTree = "<group>"; };
+		2DB2A118198824FCE12369A0 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
 		2DB3549DA254361FFB5004D1 /* NonKeyPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NonKeyPanel.swift; sourceTree = "<group>"; };
 		308E8BD77A229B614B6F4696 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		3CD6A2586AC5BBC885207676 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
@@ -219,6 +221,7 @@
 				495408255CA07555F2541C41 /* AppIconProvider.swift */,
 				6FFEBFEAD8C05EF6D0019BB6 /* AppOrderStore.swift */,
 				8499D6C3B66B4AA798D2AFB8 /* LoginItemService.swift */,
+				2DB2A118198824FCE12369A0 /* UpdateChecker.swift */,
 				848D6F996EBFD12A0EEF138C /* VolumeStore.swift */,
 			);
 			path = Services;
@@ -376,6 +379,7 @@
 				480424A64578FE1195B33D23 /* SettingsView.swift in Sources */,
 				204D6298DE582913414058F6 /* StatusBanner.swift in Sources */,
 				07252783E028BCF01CC6961D /* SystemVolumeController.swift in Sources */,
+				139BBBA8BEFB08699100BE8A /* UpdateChecker.swift in Sources */,
 				FD210C53A3CCF9369728B7CD /* VolumeSlider.swift in Sources */,
 				23A20F8439282BC48A27910E /* VolumeStore.swift in Sources */,
 			);

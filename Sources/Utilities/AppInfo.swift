@@ -20,6 +20,12 @@ enum AppInfo {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
     }
 
+    /// Откуда приложение узнаёт о новых версиях. Публичный репозиторий,
+    /// поэтому запрос идёт без токена.
+    static let latestReleaseAPI = URL(
+        string: "https://api.github.com/repos/pluggwow/AudioMixer/releases/latest"
+    )!
+
     /// «0.1.0 (1)» — то, что просят назвать в ответ на «у меня не работает».
     static var versionWithBuild: String {
         build.isEmpty || build == version ? version : "\(version) (\(build))"

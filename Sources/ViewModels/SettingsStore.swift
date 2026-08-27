@@ -189,6 +189,12 @@ final class SettingsStore: ObservableObject {
     @AppStorage("sliderStyle") var sliderStyleRaw: String = SliderStyleOption.capsule.rawValue
     @AppStorage("launchAtLogin") var launchAtLoginPreference: Bool = false
     @AppStorage("appLanguage") var appLanguageRaw: String = AppLanguage.system.rawValue
+    /// Раз в сутки спрашивать у GitHub, не вышла ли новая версия.
+    ///
+    /// Это единственное, ради чего приложение вообще ходит в сеть, поэтому
+    /// выключатель на виду: кто не хочет — выключает, кнопка проверки вручную
+    /// при этом остаётся.
+    @AppStorage("checkUpdatesAutomatically") var checkUpdatesAutomatically: Bool = true
 
     var appearanceMode: AppearanceMode {
         get { AppearanceMode(rawValue: appearanceModeRaw) ?? .system }

@@ -84,6 +84,15 @@ struct GeneralSettingsView: View {
                         .monospacedDigit()
                         .textSelection(.enabled)
                 }
+
+                UpdateRow()
+
+                Toggle("Проверять обновления автоматически",
+                       isOn: $settings.checkUpdatesAutomatically)
+            } footer: {
+                Text("Проверка обращается к GitHub раз в сутки. Это единственное, ради чего приложение выходит в сеть.")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
@@ -483,6 +492,66 @@ struct PanelMiniature: View {
                 }
             }
             .padding(6)
+        }
+    }
+}
+
+/// Строка проверки обновлений: кнопка и то, чем она кончилась.
+///
+/// Отдельным типом, потому что у неё своё состояние и своя задача, а секция
+/// «Версия» в остальном статична.
+private struct UpdateRow: View {
+
+    @ObservedObject private var checker = AppContainer.shared.updateChecker
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        HStack {
+            Button("Проверить обновления") {
+                Task { await checker.check(force: true) }
+            }
+            .controlSize(.small)
+            .disabled(checker.state == .checking)
+
+            Spacer()
+
+            status
+        }
+    }
+
+    @ViewBuilder
+    private var status: some View {
+        switch checker.state {
+        case .idle:
+            EmptyView()
+
+        case .checking:
+            Text("Проверяю…")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+
+        case .upToDate:
+            Label("Установлена последняя версия", systemImage: "checkmark")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .labelStyle(.titleAndIcon)
+
+        case .available(let version, let page):
+            // Не «скачать», а «открыть страницу»: приложение ничего не качает
+            // и не подменяет себя само — это была бы совсем другая история
+            // с подписью и доверием.
+            Button(String(format: String(localized: "Доступна версия %@"), version)) {
+                openURL(page)
+            }
+            .controlSize(.small)
+            .help("Открыть страницу загрузки")
+
+        case .failed(let message):
+            Text(message)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .truncationMode(.tail)
         }
     }
 }

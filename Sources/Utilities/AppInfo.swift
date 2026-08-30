@@ -23,7 +23,7 @@ enum AppInfo {
     /// Откуда приложение узнаёт о новых версиях. Публичный репозиторий,
     /// поэтому запрос идёт без токена.
     static let latestReleaseAPI = URL(
-        string: "https://api.github.com/repos/pluggwow/AudioMixer/releases/latest"
+        string: "https://api.github.com/repos/Artech011/AudioMixer/releases/latest"
     )!
 
     /// «0.1.0 (1)» — то, что просят назвать в ответ на «у меня не работает».

@@ -173,6 +173,25 @@ final class AudioProcessMonitor: ObservableObject {
         processes = result
     }
 
+    /// Системные агенты, которые звучат исключительно служебными сигналами:
+    /// щелчок регулятора громкости, звук подключения питания, звуки входа
+    /// в систему. Не показываем их никогда — даже пока они звучат.
+    ///
+    /// Общего правила «фоновый агент виден, пока звучит» здесь мало: щелчок
+    /// Пункта управления раздаётся ровно в момент, когда пользователь крутит
+    /// системную громкость, поэтому строка выскакивала именно тогда, когда
+    /// мешает больше всего.
+    ///
+    /// Дело не только в мусоре в списке. Этот щелчок — то, по чему громкость
+    /// оценивают на слух. Приглушив его отдельно, пользователь получил бы
+    /// неверный ориентир: система играет громко, а подтверждение тихое.
+    private static let neverShow: Set<String> = [
+        "com.apple.controlcenter",
+        "com.apple.PowerChime",
+        "com.apple.loginwindow",
+        "com.apple.systemuiserver"
+    ]
+
     /// Обычные приложения, которым место в списке только пока они звучат.
     ///
     /// Finder держит аудиоклиент постоянно — ради системных звуков и
@@ -227,7 +246,8 @@ final class AudioProcessMonitor: ObservableObject {
         // Отсекаем системные хелперы без UI (coreaudiod, VTDecoderXPCService и т.п.):
         // у них нет NSRunningApplication, и показывать их пользователю бессмысленно.
         guard let owner = Self.owningApplication(for: pid),
-              let bundleID = owner.app.bundleIdentifier else { return nil }
+              let bundleID = owner.app.bundleIdentifier,
+              !Self.neverShow.contains(bundleID) else { return nil }
 
         let isRunning = ((try? objectID.read(
             AudioProperty(kAudioProcessPropertyIsRunningOutput), defaultValue: UInt32(0)

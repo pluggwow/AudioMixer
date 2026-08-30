@@ -185,20 +185,22 @@ final class MixerPanelController: NSObject, ObservableObject {
         guard monitors.isEmpty else { return }
 
         if let global = NSEvent.addGlobalMonitorForEvents(
-            matching: [.leftMouseDown, .rightMouseDown]
-        ) { [weak self] _ in
-            Task { @MainActor in self?.close() }
-        } {
+            matching: [.leftMouseDown, .rightMouseDown],
+            handler: { [weak self] _ in
+                Task { @MainActor in self?.close() }
+            }
+        ) {
             monitors.append(global)
         }
 
         if let local = NSEvent.addLocalMonitorForEvents(
-            matching: [.leftMouseDown, .rightMouseDown]
-        ) { [weak self] event in
-            guard let self else { return event }
-            if !self.isOurWindow(event.window) { self.close() }
-            return event
-        } {
+            matching: [.leftMouseDown, .rightMouseDown],
+            handler: { [weak self] event in
+                guard let self else { return event }
+                if !self.isOurWindow(event.window) { self.close() }
+                return event
+            }
+        ) {
             monitors.append(local)
         }
     }
